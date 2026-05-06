@@ -201,42 +201,11 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
       <div class="chwrap"><canvas id="ch-yr"></canvas></div>
     </div>
 
+
     <div class="page" id="page-input">
-      <div class="ph"><div class="pht">Input harian</div><div class="phs" id="inp-sub">Kepala tim input update harian</div></div>
-      <div class="fcard">
-        <div class="frow"><label class="flbl">Anggota</label><select class="fc" id="inp-m" onchange="onInpMember()"></select></div>
-        <div id="inp-meta" style="font-size:11px;color:var(--t3);font-family:var(--mono);margin-bottom:.875rem"></div>
-        <div class="frow"><label class="flbl">Tanggal</label><input type="date" class="fc" id="inp-d"></div>
-        <div class="frow">
-          <label class="flbl">Hadir di studio</label>
-          <div class="opts">
-            <button class="opt on" id="att-h" onclick="setO('att','h')">Hadir</button>
-            <button class="opt" id="att-w" onclick="setO('att','w')">WFH</button>
-            <button class="opt" id="att-n" onclick="setO('att','n')">Tidak hadir</button>
-          </div>
-        </div>
-        <div class="frow">
-          <label class="flbl" id="upd-lbl">Setor update WA</label>
-          <div class="opts">
-            <button class="opt on" id="upd-y" onclick="setO('upd','y')">Ya</button>
-            <button class="opt" id="upd-n" onclick="setO('upd','n')">Tidak</button>
-          </div>
-        </div>
-        <div class="frow">
-          <label class="flbl">Milestone selesai hari ini</label>
-          <div class="ms-cols" id="inp-ms" style="margin-top:4px"></div>
-        </div>
-        <div class="frow">
-          <label class="flbl">Pemahaman brief</label>
-          <div class="opts">
-            <button class="opt" id="br-g" onclick="setO('br','g')">Mandiri</button>
-            <button class="opt on" id="br-m" onclick="setO('br','m')">Wajar</button>
-            <button class="opt" id="br-l" onclick="setO('br','l')">Sering tanya dasar</button>
-          </div>
-        </div>
-        <div class="frow"><label class="flbl">Catatan</label><input type="text" class="fc" id="inp-note" placeholder="Hambatan, progres, dll"></div>
-        <button class="sbtn" onclick="saveEntry()">Simpan</button>
-      </div>
+      <div class="ph"><div class="pht">Input harian</div><div class="phs" id="inp-date-label"></div></div>
+      <div id="inp-member-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem"></div>
+      <div id="inp-form-wrap"></div>
     </div>
 
     <div class="page" id="page-projects">
@@ -571,57 +540,175 @@ function renderYearly(){
   mkChart('ch-yr',MN,members.map((m,i)=>({label:m.name,data:Array.from({length:12},(_,mo)=>{const pfx=`${y}-${String(mo+1).padStart(2,'0')}`;return Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx)&&(S.entries[m.id]||{})[k]?.upd==='y').length;}),borderColor:colors[i%colors.length],backgroundColor:'transparent',tension:.4,pointRadius:3,spanGaps:true})));
 }
 
-function renderInput(){
-  const members=S.members.filter(m=>m.lead===curLead);
-  const sel=document.getElementById('inp-m');
-  sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
-  document.getElementById('inp-d').value=today();
-  onInpMember();
-}
 
-function onInpMember(){
-  const mid=document.getElementById('inp-m')?.value;
-  const m=S.members.find(x=>x.id===mid);if(!m)return;
-  const channel=ch(m.lead);
-  document.getElementById('inp-meta').textContent=`${m.team} · ${m.role} · Update via ${channel}`;
-  document.getElementById('upd-lbl').textContent=`Setor update ${channel}`;
-  document.getElementById('inp-sub').textContent=`Input harian · update via ${channel}`;
-  inpMsCheck={};
-  const proj=S.projects.find(p=>p.assignee===mid&&p.active);
-  const list=document.getElementById('inp-ms');
-  if(!proj){list.innerHTML=`<div style="font-size:12px;color:var(--t3);font-family:var(--mono)">Belum ada project aktif</div>`;return;}
-  const pending=proj.milestones.filter(ms=>!ms.status);
-  if(!pending.length){list.innerHTML=`<div style="font-size:12px;color:var(--ok);font-family:var(--mono)">Semua milestone selesai ✓</div>`;return;}
-  list.innerHTML=pending.map((ms,i)=>`<div class="msr" id="ims-${i}" onclick="toggleInpMs(${i})"><div class="mschk" id="imc-${i}"></div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div></div>`).join('');
-}
 
-function toggleInpMs(i){
-  inpMsCheck[i]=!inpMsCheck[i];
-  const c=document.getElementById('imc-'+i),r=document.getElementById('ims-'+i);
-  if(c){c.classList.toggle('done',inpMsCheck[i]);c.textContent=inpMsCheck[i]?'✓':'';}
-  if(r)r.classList.toggle('done',inpMsCheck[i]);
-}
+// ── Input page — tab-based ────────────────────────────────────────
+let curInpMember = null;
+let inpMsChecked = {};
+let fAttL='h', fUpdL='y', fBrL='m';
 
-function saveEntry(){
-  const mid=document.getElementById('inp-m').value;
-  const date=document.getElementById('inp-d').value;
-  const note=document.getElementById('inp-note').value.trim();
-  if(!S.entries[mid])S.entries[mid]={};
-  S.entries[mid][date]={att:fAtt,upd:fUpd,br:fBr,note};
-  const proj=S.projects.find(p=>p.assignee===mid&&p.active);
-  if(proj){
-    const pending=proj.milestones.filter(ms=>!ms.status);
-    Object.keys(inpMsCheck).forEach(i=>{
-      if(inpMsCheck[i]&&pending[i]){
-        if(!pending[i].deadline)pending[i].status='hit';
-        else pending[i].status=pending[i].deadline>=date?'hit':'late';
-      }
-    });
+function renderInput() {
+  const members = S.members.filter(m=>m.lead===curLead);
+  const td = today();
+  document.getElementById('inp-date-label').textContent = formatDisplayDate(td);
+  // Build member tabs
+  const tabsEl = document.getElementById('inp-member-tabs');
+  tabsEl.innerHTML = members.map(m => {
+    const done = !!(S.entries[m.id]&&S.entries[m.id][td]);
+    return `<button
+      id="itab-${m.id}"
+      onclick="selectInpMember('${m.id}')"
+      style="padding:7px 14px;border-radius:20px;border:1.5px solid ${done?'var(--ok)':'var(--bdrx)'};
+        background:${done?'var(--ok-l)':'var(--surf)'};
+        color:${done?'var(--ok)':'var(--t2)'};
+        font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
+      ${m.name}${done?' ✓':''}
+    </button>`;
+  }).join('');
+  // Select first member or keep current
+  if (!curInpMember || !members.find(m=>m.id===curInpMember)) {
+    curInpMember = members[0]?.id || null;
   }
-  inpMsCheck={};save();
-  showToast(`Tersimpan · ${S.members.find(m=>m.id===mid)?.name} · ${date}`);
-  document.getElementById('inp-note').value='';
-  onInpMember();
+  if (curInpMember) renderInpForm(curInpMember);
+}
+
+function formatDisplayDate(d) {
+  const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const dt = new Date(d+'T00:00:00');
+  return `${days[dt.getDay()]} · ${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`;
+}
+
+function selectInpMember(mid) {
+  curInpMember = mid;
+  inpMsChecked = {};
+  // Update active tab style
+  const members = S.members.filter(m=>m.lead===curLead);
+  const td = today();
+  members.forEach(m => {
+    const btn = document.getElementById('itab-'+m.id);
+    if (!btn) return;
+    const done = !!(S.entries[m.id]&&S.entries[m.id][td]);
+    const active = m.id === mid;
+    btn.style.borderColor = active ? 'var(--tx)' : (done?'var(--ok)':'var(--bdrx)');
+    btn.style.background = active ? 'var(--tx)' : (done?'var(--ok-l)':'var(--surf)');
+    btn.style.color = active ? '#fff' : (done?'var(--ok)':'var(--t2)');
+  });
+  renderInpForm(mid);
+}
+
+function renderInpForm(mid) {
+  const m = S.members.find(x=>x.id===mid); if(!m) return;
+  const td = today();
+  const existing = (S.entries[mid]||{})[td];
+  // Pre-fill from existing entry or defaults
+  fAttL = existing?.att || 'h';
+  fUpdL = existing?.upd || 'y';
+  fBrL  = existing?.br  || 'm';
+  const note = existing?.note || '';
+  const channel = ch(m.lead);
+  // Build all projects milestones for this member
+  const projs = S.projects.filter(p=>p.assignee===mid&&p.active);
+  const projHtml = projs.length ? projs.map(p => {
+    const items = p.milestones.map((ms,i) => {
+      const st = ms.status;
+      const rc = st==='hit'?'done':st?'late':'';
+      const cc = st==='hit'?'done':st?'late':'';
+      return `<div class="msr ${rc}" id="ims-${p.id}-${i}" onclick="toggleInpMsNew('${p.id}',${i})">
+        <div class="mschk ${cc}" id="imc-${p.id}-${i}">${st==='hit'?'✓':st?'!':''}</div>
+        <div style="flex:1;min-width:0">
+          <div class="msn">${ms.name}</div>
+          <div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:.875rem">
+      <div class="ms-proj">${p.name}</div>
+      <div class="ms-cols">${items}</div>
+    </div>`;
+  }).join('') : `<div style="font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:.875rem">Belum ada project aktif</div>`;
+
+  const attOpts = [['h','Hadir'],['w','WFH'],['n','Tidak hadir']];
+  const updOpts = [['y','Ya'],['n','Tidak']];
+  const brOpts  = [['g','Mandiri'],['m','Wajar'],['l','Sering tanya dasar']];
+  const mkOpts = (type, opts, cur) => opts.map(([v,l])=>
+    `<button class="opt${v===cur?' on':''}" id="fi-${type}-${v}" onclick="setFL('${type}','${v}')">${l}</button>`
+  ).join('');
+
+  document.getElementById('inp-form-wrap').innerHTML = `
+    <div class="fcard">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding-bottom:.875rem;border-bottom:1px solid var(--bdr)">
+        <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
+        <div>
+          <div style="font-size:13px;font-weight:500">${m.name}</div>
+          <div style="font-size:11px;color:var(--t3)">${m.team} · Update via ${channel}</div>
+        </div>
+        ${existing?`<span style="margin-left:auto;font-size:11px;font-family:var(--mono);background:var(--ok-l);color:var(--ok);padding:2px 8px;border-radius:3px">sudah diisi ✓</span>`:''}
+      </div>
+      <div class="frow">
+        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:8px">Milestone selesai hari ini</div>
+        ${projHtml}
+      </div>
+      <div class="frow">
+        <label class="flbl">Hadir di studio</label>
+        <div class="opts">${mkOpts('att',attOpts,fAttL)}</div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Setor update ${channel}</label>
+        <div class="opts">${mkOpts('upd',updOpts,fUpdL)}</div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Pemahaman brief</label>
+        <div class="opts">${mkOpts('br',brOpts,fBrL)}</div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Catatan</label>
+        <input type="text" class="fc" id="inp-note-f" placeholder="Hambatan, progres, dll" value="${note}">
+      </div>
+      <button class="sbtn" onclick="saveEntryNew()">Simpan ${m.name}</button>
+    </div>`;
+}
+
+function setFL(type, val) {
+  const maps = {
+    att: ['h','w','n'],
+    upd: ['y','n'],
+    br:  ['g','m','l'],
+  };
+  maps[type].forEach(v => document.getElementById(`fi-${type}-${v}`)?.classList.remove('on'));
+  document.getElementById(`fi-${type}-${val}`)?.classList.add('on');
+  if(type==='att') fAttL=val;
+  if(type==='upd') fUpdL=val;
+  if(type==='br')  fBrL=val;
+}
+
+function toggleInpMsNew(pid, idx) {
+  const key = `${pid}-${idx}`;
+  inpMsChecked[key] = !inpMsChecked[key];
+  const p = S.projects.find(x=>x.id===pid); if(!p) return;
+  const ms = p.milestones[idx];
+  const td = today();
+  if (inpMsChecked[key]) {
+    ms.status = !ms.deadline ? 'hit' : (ms.deadline >= td ? 'hit' : 'late');
+  } else {
+    ms.status = null;
+  }
+  const c = document.getElementById(`imc-${pid}-${idx}`);
+  const r = document.getElementById(`ims-${pid}-${idx}`);
+  if (c) { c.className = `mschk${ms.status==='hit'?' done':ms.status?' late':''}`; c.textContent = ms.status==='hit'?'✓':ms.status?'!':''; }
+  if (r) { r.className = `msr${ms.status==='hit'?' done':ms.status?' late':''}`; }
+}
+
+function saveEntryNew() {
+  const mid = curInpMember; if(!mid) return;
+  const td = today();
+  const note = document.getElementById('inp-note-f')?.value.trim()||'';
+  if(!S.entries[mid]) S.entries[mid]={};
+  S.entries[mid][td] = {att:fAttL, upd:fUpdL, br:fBrL, note};
+  save();
+  const m = S.members.find(x=>x.id===mid);
+  showToast(`Tersimpan · ${m?.name} · ${td}`);
+  // Re-render tabs to show green checkmark
+  renderInput();
 }
 
 function renderProjects(){
@@ -704,13 +791,6 @@ window.renderPage=renderPage;
 function setLead(lead,btn){curLead=lead;document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('.si.on').forEach(x=>{x.classList.remove('ay','ag');x.classList.add(lead==='yogi'?'ay':'ag');});renderPage(curPage);}
 function toggle(id){document.getElementById(id)?.classList.toggle('open');}
 
-function setO(type,val){
-  const maps={att:{ids:['att-h','att-w','att-n'],vals:['h','w','n']},upd:{ids:['upd-y','upd-n'],vals:['y','n']},br:{ids:['br-g','br-m','br-l'],vals:['g','m','l']}};
-  const{ids,vals}=maps[type];
-  ids.forEach(id=>document.getElementById(id)?.classList.remove('on'));
-  document.getElementById(ids[vals.indexOf(val)])?.classList.add('on');
-  if(type==='att')fAtt=val;if(type==='upd')fUpd=val;if(type==='br')fBr=val;
-}
 
 function mkChart(id,labels,datasets){
   const c=document.getElementById(id);if(!c)return;
