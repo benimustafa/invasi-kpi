@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invasi Studio — KPI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F4F0;--surf:#FFF;--bdr:#E0DED6;--bdrx:#C2C0B6;
+  --tx:#18170E;--t2:#68665E;--t3:#A4A29A;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --yogi:#1B4F72;--yogi-l:#E8F4FC;
+  --gha:#512E5F;--gha-l:#F3EBF8;
+  --ok:#1B5E20;--ok-l:#E8F5E9;--ok-b:#A5D6A7;
+  --warn:#6D4C00;--warn-l:#FFF8E1;--warn-b:#FFD54F;
+  --crit:#7B1A1A;--crit-l:#FFEBEE;--crit-b:#FFCDD2;
+  --info:#0D3B6E;--info-l:#E3F2FD;--info-b:#90CAF9;
+  --neu:#4A4A44;--neu-l:#F0EFEB;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;min-height:100vh}
+.topbar{display:flex;align-items:center;background:var(--surf);border-bottom:1px solid var(--bdr);padding:0 1.75rem;height:50px;position:sticky;top:0;z-index:20}
+.brand{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;color:var(--tx);margin-right:2rem;white-space:nowrap}
+.ltabs{display:flex;height:50px}
+.ltab{padding:0 1.25rem;height:100%;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;color:var(--t2);transition:all .15s}
+.ltab.yogi.on{color:var(--yogi);border-bottom-color:var(--yogi)}
+.ltab.gha.on{color:var(--gha);border-bottom-color:var(--gha)}
+.ldot{width:7px;height:7px;border-radius:50%}
+.dy{background:var(--yogi)}.dg{background:var(--gha)}
+.wkbadge{font-family:var(--mono);font-size:11px;color:var(--t3);margin-left:auto;padding:2px 8px;border:1px solid var(--bdr);border-radius:4px}
+.shell{display:flex;min-height:calc(100vh - 50px)}
+.sidebar{width:190px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);padding:1rem .625rem;position:sticky;top:50px;height:calc(100vh - 50px);overflow-y:auto}
+.main{flex:1;padding:1.75rem 2rem;max-width:880px;min-width:0}
+.snl{font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding:0 .625rem;margin-bottom:3px;margin-top:.875rem}
+.snl:first-child{margin-top:0}
+.si{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--t2);transition:all .12s;border:none;background:none;width:100%;text-align:left}
+.si:hover{background:var(--bg);color:var(--tx)}
+.si.on{font-weight:500}
+.si.on.ay{background:var(--yogi-l);color:var(--yogi)}
+.si.on.ag{background:var(--gha-l);color:var(--gha)}
+.page{display:none}.page.on{display:block}
+.ph{margin-bottom:1.5rem;padding-bottom:1.125rem;border-bottom:1px solid var(--bdr)}
+.pht{font-size:18px;font-weight:500;letter-spacing:-.01em}
+.phs{font-size:12px;color:var(--t2);margin-top:2px}
+.hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:1.5rem}
+.hero{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:.875rem 1.125rem}
+.hero.ay{border-top:3px solid var(--yogi)}.hero.ag{border-top:3px solid var(--gha)}
+.hero-l{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:5px}
+.hero-v{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1;margin-bottom:3px}
+.hero-s{font-size:11px;color:var(--t2)}
+.c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-crit{color:var(--crit)}.c-neu{color:var(--t3)}
+.tier{display:inline-flex;font-family:var(--mono);font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px;white-space:nowrap;letter-spacing:.03em}
+.tn{background:var(--neu-l);color:var(--neu)}.tb{background:var(--crit-l);color:var(--crit)}
+.to{background:var(--warn-l);color:var(--warn)}.ts{background:var(--info-l);color:var(--info)}
+.tex{background:var(--ok-l);color:var(--ok)}
+.drb{font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 8px;border-radius:3px}
+.drb-ok{background:var(--ok-l);color:var(--ok)}.drb-w{background:var(--warn-l);color:var(--warn)}
+.drb-c{background:var(--crit-l);color:var(--crit)}.drb-n{background:var(--neu-l);color:var(--neu)}
+.mc{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.mch{display:flex;align-items:center;gap:10px;padding:.875rem 1rem;cursor:pointer;transition:background .1s}
+.mch:hover{background:var(--bg)}
+.av{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:500;flex-shrink:0}
+.a0{background:#D6EAF8;color:#1B4F72}.a1{background:#E8D5F5;color:#512E5F}
+.a2{background:#D5F5E3;color:#1E8449}.a3{background:#FCF3CF;color:#7D6608}
+.a4{background:#FADBD8;color:#922B21}.a5{background:#D6EAF8;color:#1B4F72}
+.mi{flex:1;min-width:0}.mn{font-size:13px;font-weight:500}.mr{font-size:11px;color:var(--t3);margin-top:1px}
+.strk{font-family:var(--mono);font-size:11px;color:var(--t3);margin-right:6px;white-space:nowrap}
+.strk b{color:var(--t2)}
+.chv{font-size:10px;color:var(--t3);transition:transform .18s;margin-left:2px;flex-shrink:0}
+.mc.open .chv{transform:rotate(180deg)}
+.mcd{display:none;border-top:1px solid var(--bdr);padding:1rem}
+.mc.open .mcd{display:block}
+.daygrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:.875rem}
+.dd{border-radius:6px;padding:6px 4px;text-align:center}
+.ddl{font-size:10px;color:var(--t3);margin-bottom:2px;font-family:var(--mono)}
+.dds{font-size:11px;font-weight:500}
+.dok{background:#E8F5E9}.dok .dds{color:var(--ok)}
+.dms{background:#FFEBEE}.dms .dds{color:var(--crit)}
+.dft{background:var(--bg)}.dft .dds{color:var(--t3)}
+.ms-wrap{margin-bottom:.875rem}
+.ms-proj{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:7px}
+.ms-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.msr{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--bg);border-radius:6px;cursor:pointer;transition:all .1s;border:1px solid transparent}
+.msr:hover{background:var(--bdr)}.msr.done{background:var(--ok-l);border-color:var(--ok-b)}
+.msr.late{background:var(--crit-l);border-color:var(--crit-b)}
+.mschk{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--bdrx);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:all .12s}
+.mschk.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.mschk.late{background:var(--crit);border-color:var(--crit);color:#fff}
+.msn{font-size:12px;font-weight:500;flex:1;min-width:0}
+.msr.done .msn{text-decoration:line-through;color:var(--t2)}
+.msd{font-family:var(--mono);font-size:10px;color:var(--t3)}
+.kpig{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:.875rem}
+.kpii{background:var(--bg);border-radius:6px;padding:7px 10px}
+.kpil{font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:500;color:var(--t3);margin-bottom:2px}
+.kpiv{font-size:13px;font-weight:500;color:var(--tx)}
+.div{height:1px;background:var(--bdr);margin:.875rem 0}
+.sec{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
+.months{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.25rem}
+.mbtn{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:4px;border:1px solid var(--bdr);background:var(--surf);cursor:pointer;color:var(--t2);transition:all .12s}
+.mbtn:hover{border-color:var(--bdrx);color:var(--tx)}.mbtn.on{background:var(--tx);color:#fff;border-color:var(--tx)}
+.rcard{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.rch{display:flex;align-items:center;gap:10px;padding:.875rem 1rem;cursor:pointer;transition:background .1s}
+.rch:hover{background:var(--bg)}
+.rcd{display:none;border-top:1px solid var(--bdr);padding:1rem}
+.rcard.open .rcd{display:block}.rcard.open .chv{transform:rotate(180deg)}
+.rsec{margin-bottom:.875rem}.rsec:last-child{margin-bottom:0}
+.rsec-t{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.rsec-t.pos{color:var(--ok)}.rsec-t.neg{color:var(--crit)}.rsec-t.act{color:var(--info)}
+.ritem{font-size:12px;color:var(--t2);padding:4px 0;display:flex;align-items:flex-start;gap:7px;border-bottom:1px solid var(--bdr)}
+.ritem:last-child{border-bottom:none}
+.rdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.rdot.pos{background:var(--ok)}.rdot.neg{background:var(--crit)}.rdot.act{background:var(--info)}
+.yr-tl-wrap{margin-bottom:1rem}
+.yr-name{font-size:12px;font-weight:500;margin-bottom:6px;color:var(--t2)}
+.yr-bars{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:3px}
+.yr-bar{height:28px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-family:var(--mono);font-weight:500}
+.yr-mls{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}
+.yr-ml{font-size:9px;font-family:var(--mono);color:var(--t3);text-align:center}
+.yb-ok{background:var(--ok-l);color:var(--ok)}.yb-w{background:var(--warn-l);color:var(--warn)}
+.yb-c{background:var(--crit-l);color:var(--crit)}.yb-n{background:var(--neu-l);color:var(--t3)}
+.sal{border-radius:8px;padding:.875rem 1rem;margin-bottom:8px;border:1px solid transparent}
+.sal.ok{background:var(--ok-l);border-color:var(--ok-b)}.sal.warn{background:var(--warn-l);border-color:var(--warn-b)}
+.sal.crit{background:var(--crit-l);border-color:var(--crit-b)}
+.sal-t{font-size:13px;font-weight:500}.sal-s{font-size:12px;color:var(--t2);margin-top:2px}
+.fcard{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.ftitle{font-size:13px;font-weight:500;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
+.frow{margin-bottom:.875rem}
+.flbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:500;color:var(--t3);margin-bottom:5px;display:block}
+.fc{width:100%;padding:8px 10px;font-size:13px;font-family:var(--sans);border:1px solid var(--bdr);border-radius:6px;background:var(--bg);color:var(--tx);outline:none;transition:border-color .12s}
+.fc:focus{border-color:var(--bdrx);background:var(--surf)}.fc::placeholder{color:var(--t3)}
+textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1.6}
+.opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.opt{padding:6px 11px;font-size:12px;font-family:var(--mono);border-radius:5px;border:1px solid var(--bdr);background:var(--surf);cursor:pointer;color:var(--t2);transition:all .12s}
+.opt:hover{border-color:var(--bdrx);color:var(--tx)}.opt.on{background:var(--tx);color:#fff;border-color:var(--tx)}
+.sbtn{width:100%;padding:9px;font-size:13px;font-weight:500;font-family:var(--sans);border:none;border-radius:7px;background:var(--tx);color:#fff;cursor:pointer;margin-top:.5rem;transition:opacity .12s}
+.sbtn:hover{opacity:.85}.sbtn.ghost{background:var(--bg);color:var(--tx);border:1px solid var(--bdr)}.sbtn.ghost:hover{background:var(--bdr)}
+.pcard{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:1rem;margin-bottom:10px}
+.pt{font-size:14px;font-weight:500}.pm{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:2px;margin-bottom:.875rem}
+.pcols{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px;margin-bottom:1rem}
+.tc{background:var(--bg);border:1px solid var(--bdr);border-radius:7px;padding:.75rem 1rem;cursor:pointer;transition:all .12s}
+.tc:hover,.tc.on{border-color:var(--bdrx);background:var(--surf)}
+.tt{font-size:12px;font-weight:500;margin-bottom:2px}.ts2{font-size:11px;color:var(--t3)}
+.chwrap{position:relative;height:155px;margin:1rem 0}
+.smr{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;margin-bottom:8px}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--tx);color:#fff;font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:6px;opacity:0;transform:translateY(6px);transition:all .2s;pointer-events:none;z-index:999}
+.toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:640px){.sidebar{display:none}.main{padding:1rem}.ms-cols,.kpig,.pcols,.tgrid{grid-template-columns:1fr}.yr-bars,.yr-mls{grid-template-columns:repeat(6,1fr)}}
+</style>
+</head>
+<body>
+<div id="fb-loading" style="position:fixed;inset:0;background:#F5F4F0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px">
+  <div style="font-family:'DM Mono',monospace;font-size:12px;color:#A4A29A;letter-spacing:.08em">INVASI STUDIO</div>
+  <div style="font-size:13px;color:#68665E">Menghubungkan ke database...</div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="topbar">
+  <span class="brand">INVASI STUDIO</span>
+  <div class="ltabs">
+    <button class="ltab yogi on" onclick="setLead('yogi',this)"><span class="ldot dy"></span>Tim Yogi</button>
+    <button class="ltab gha" onclick="setLead('gha',this)"><span class="ldot dg"></span>Tim Gha</button>
+  </div>
+  <span class="wkbadge" id="wkbadge"></span>
+</div>
+<div class="shell">
+  <nav class="sidebar">
+    <div class="snl">Review</div>
+    <button class="si on ay" onclick="goPage('weekly',this)">Mingguan</button>
+    <button class="si" onclick="goPage('monthly',this)">Bulanan</button>
+    <button class="si" onclick="goPage('yearly',this)">Tahunan</button>
+    <div class="snl">Input</div>
+    <button class="si" onclick="goPage('input',this)">Input harian</button>
+    <button class="si" onclick="goPage('projects',this)">Kelola project</button>
+    <div class="snl">Admin</div>
+    <button class="si" onclick="goPage('settings',this)">Pengaturan</button>
+  </nav>
+  <main class="main">
+
+    <div class="page on" id="page-weekly">
+      <div class="ph"><div class="pht" id="wk-title">Mingguan</div><div class="phs" id="wk-range"></div></div>
+      <div class="hero-row" id="wk-heroes"></div>
+      <div id="wk-body"></div>
+    </div>
+
+    <div class="page" id="page-monthly">
+      <div class="ph"><div class="pht">Bulanan</div><div class="phs">Review performa + bahan 1-on-1</div></div>
+      <div class="months" id="mo-tabs"></div>
+      <div class="hero-row" id="mo-heroes"></div>
+      <div class="sec">Review per anggota</div>
+      <div id="mo-body"></div>
+    </div>
+
+    <div class="page" id="page-yearly">
+      <div class="ph"><div class="pht" id="yr-title">Tahunan</div><div class="phs" id="yr-sub"></div></div>
+      <div class="hero-row" id="yr-heroes"></div>
+      <div class="sec">Timeline tier per anggota</div>
+      <div id="yr-tl"></div>
+      <div class="sec" style="margin-top:1.25rem">Rekomendasi kenaikan gaji</div>
+      <div id="yr-sal"></div>
+      <div class="chwrap"><canvas id="ch-yr"></canvas></div>
+    </div>
+
+    <div class="page" id="page-input">
+      <div class="ph"><div class="pht">Input harian</div><div class="phs" id="inp-sub">Kepala tim input update harian</div></div>
+      <div class="fcard">
+        <div class="frow"><label class="flbl">Anggota</label><select class="fc" id="inp-m" onchange="onInpMember()"></select></div>
+        <div id="inp-meta" style="font-size:11px;color:var(--t3);font-family:var(--mono);margin-bottom:.875rem"></div>
+        <div class="frow"><label class="flbl">Tanggal</label><input type="date" class="fc" id="inp-d"></div>
+        <div class="frow">
+          <label class="flbl">Hadir di studio</label>
+          <div class="opts">
+            <button class="opt on" id="att-h" onclick="setO('att','h')">Hadir</button>
+            <button class="opt" id="att-w" onclick="setO('att','w')">WFH</button>
+            <button class="opt" id="att-n" onclick="setO('att','n')">Tidak hadir</button>
+          </div>
+        </div>
+        <div class="frow">
+          <label class="flbl" id="upd-lbl">Setor update WA</label>
+          <div class="opts">
+            <button class="opt on" id="upd-y" onclick="setO('upd','y')">Ya</button>
+            <button class="opt" id="upd-n" onclick="setO('upd','n')">Tidak</button>
+          </div>
+        </div>
+        <div class="frow">
+          <label class="flbl">Milestone selesai hari ini</label>
+          <div class="ms-cols" id="inp-ms" style="margin-top:4px"></div>
+        </div>
+        <div class="frow">
+          <label class="flbl">Pemahaman brief</label>
+          <div class="opts">
+            <button class="opt" id="br-g" onclick="setO('br','g')">Mandiri</button>
+            <button class="opt on" id="br-m" onclick="setO('br','m')">Wajar</button>
+            <button class="opt" id="br-l" onclick="setO('br','l')">Sering tanya dasar</button>
+          </div>
+        </div>
+        <div class="frow"><label class="flbl">Catatan</label><input type="text" class="fc" id="inp-note" placeholder="Hambatan, progres, dll"></div>
+        <button class="sbtn" onclick="saveEntry()">Simpan</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-projects">
+      <div class="ph"><div class="pht">Kelola project</div><div class="phs">Buat project + set milestone. Template tersedia</div></div>
+      <div class="sec">Project aktif</div>
+      <div id="proj-active"></div>
+      <div class="sec" style="margin-top:1.25rem">Buat project baru</div>
+      <div class="fcard">
+        <div class="frow"><label class="flbl">Nama project / brief</label><input type="text" class="fc" id="np-name" placeholder="Misal: Brief W19 — Vintage Badge / Schriftolia Serif"></div>
+        <div class="frow"><label class="flbl">Assign ke</label><select class="fc" id="np-assign" onchange="onNpAssign()"></select></div>
+        <div class="frow"><label class="flbl">Pilih template</label><div class="tgrid" id="tpl-grid"></div></div>
+        <div class="frow">
+          <label class="flbl">Milestone — Nama | YYYY-MM-DD (tanpa tanggal untuk video: tulis Nama saja)</label>
+          <textarea class="fc" id="np-ms" rows="7"></textarea>
+        </div>
+        <button class="sbtn" onclick="createProject()">Buat project</button>
+      </div>
+    </div>
+
+    <div class="page" id="page-settings">
+      <div class="ph"><div class="pht">Pengaturan</div><div class="phs">Kelola anggota tim</div></div>
+      <div id="set-list"></div>
+      <div class="fcard" style="margin-top:1rem">
+        <div class="ftitle">Tambah anggota</div>
+        <div class="frow"><label class="flbl">Nama</label><input type="text" class="fc" id="sn-n" placeholder="Nama"></div>
+        <div class="frow"><label class="flbl">Tim</label>
+          <select class="fc" id="sn-t"><option>Ilustrasi & Canva</option><option>Video</option><option>Font</option></select>
+        </div>
+        <div class="frow"><label class="flbl">Role</label><input type="text" class="fc" id="sn-r" placeholder="Role"></div>
+        <button class="sbtn" onclick="addMember()">Tambah</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDXaaTr-gFkfY_5Ikmni8cz6UIbKzEGEns",
+  authDomain: "invasi-kpi.firebaseapp.com",
+  databaseURL: "https://invasi-kpi-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "invasi-kpi",
+  storageBucket: "invasi-kpi.firebasestorage.app",
+  messagingSenderId: "857676439142",
+  appId: "1:857676439142:web:e6f0eb5d2e0799cedc57a7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const dbRef = ref(db, 'invasi_kpi');
+
+// Override save: write to Firebase
+window._fbSave = function(data) {
+  set(dbRef, data).catch(e => console.error('Firebase save error:', e));
+};
+
+// Listen for remote changes and sync to local state
+onValue(dbRef, (snapshot) => {
+  const val = snapshot.val();
+  if (val) {
+    // Merge remote into S without losing local structure
+    if (val.members) S.members = val.members;
+    if (val.entries) S.entries = val.entries;
+    if (val.projects) S.projects = val.projects;
+    // Re-render current page
+    try { renderPage(window._curPage || 'weekly'); } catch(e) {}
+  }
+  // Hide loading overlay once data arrives
+  const ov = document.getElementById('fb-loading');
+  if (ov) ov.style.display = 'none';
+});
+</script>
+<script>
+const SK='invasi_kpi_v5';
+const MN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
+const DN=['Sen','Sel','Rab','Kam','Jum'];
+const AVS=['a0','a1','a2','a3','a4','a5'];
+const TORD={exceptional:4,solid:3,ontrack:2,below:1};
+const TEMPLATES={
+  'Ilustrasi (mingguan)':`Sket konsep | {MON}\nDelivery vector | {FRI}`,
+  'Canva (mingguan)':`Sket konsep | {MON}\nDelivery file Canva | {FRI}`,
+  'Video (mingguan)':`Shot\nDelivery`,
+  'Font (full cycle)':`Konsep sket & 1st adhesion vector | {D+0}\nUppercase | {D+5}\nCheck uppercase | {D+6}\nLowercase | {D+13}\nCheck lowercase | {D+14}\nMultilingual | {D+16}\nAlternate & ligatures | {D+20}\nCek alternate & ligatures | {D+23}\nNumber | {D+24}\nPunctuation & symbol | {D+27}\nCheck all glyphs | {D+28}\nKerning | {D+30}\nCek rekap | {D+31}`
+};
+const DEF={
+  members:[
+    {id:'devi', name:'Devi', team:'Ilustrasi & Canva',role:'Illustrator',   lead:'yogi',av:'a0'},
+    {id:'rega', name:'Rega', team:'Ilustrasi & Canva',role:'Illustrator',   lead:'yogi',av:'a1'},
+    {id:'suci', name:'Suci', team:'Ilustrasi & Canva',role:'Canva Designer',lead:'yogi',av:'a2'},
+    {id:'dirda',name:'Dirda',team:'Video',            role:'Videographer',  lead:'yogi',av:'a3'},
+    {id:'wawan',name:'Wawan',team:'Font',             role:'Font Designer', lead:'gha', av:'a4'},
+  ],
+  entries:{},projects:[]
+};
+let S=loadState();
+let curLead='yogi',curMonth=new Date().getMonth(),curPage='weekly';
+let charts={},fAtt='h',fUpd='y',fBr='m',inpMsCheck={},selTpl=null;
+
+function loadState(){return JSON.parse(JSON.stringify(DEF));}
+function save(){if(window._fbSave)window._fbSave(S);}
+
+function weekDates(off=0){const n=new Date(),dy=n.getDay()||7;const m=new Date(n);m.setDate(n.getDate()-dy+1+off*7);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});}
+function today(){return new Date().toISOString().slice(0,10);}
+function addDays(date,n){const d=new Date(date);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+function fmtDate(s){return s?s.slice(5).replace('-','/'):'—';}
+function weekRange(){const d=weekDates();return d[0].slice(5).replace('-','/')+'–'+d[4].slice(5).replace('-','/');}
+function fillTpl(tpl){const d=weekDates();let o=tpl.replace(/{MON}/g,d[0]).replace(/{TUE}/g,d[1]).replace(/{WED}/g,d[2]).replace(/{THU}/g,d[3]).replace(/{FRI}/g,d[4]);const b=today();return o.replace(/\{D\+(\d+)\}/g,(_,n)=>addDays(b,parseInt(n)));}
+function ch(lead){return lead==='gha'?'Telegram':'WA';}
+
+function getDeliveryRate(mid){
+  const projs=S.projects.filter(p=>p.assignee===mid);
+  const due=projs.flatMap(p=>p.milestones.filter(ms=>ms.deadline&&ms.deadline<=today()));
+  if(!due.length)return null;
+  return Math.round(due.filter(ms=>ms.status==='hit').length/due.length*100);
+}
+function getUpdateRate(mid){
+  const e=S.entries[mid]||{},days=Object.keys(e);
+  if(!days.length)return null;
+  return Math.round(days.filter(d=>e[d].upd==='y').length/days.length*100);
+}
+function getTier(mid){
+  const dr=getDeliveryRate(mid),ur=getUpdateRate(mid);
+  if(dr===null&&ur===null)return null;
+  const d=dr??100,u=ur??100;
+  if(d>=90&&u>=90)return'exceptional';
+  if(d>=80&&u>=70)return'solid';
+  if(d>=60&&u>=50)return'ontrack';
+  return'below';
+}
+function getMonthTier(mid,month){
+  const y=new Date().getFullYear(),pfx=`${y}-${String(month+1).padStart(2,'0')}`;
+  const e=S.entries[mid]||{};
+  const scores=[];
+  for(let w=-4;w<=1;w++){
+    const dates=weekDates(w);
+    if(!dates.some(d=>d.startsWith(pfx)))continue;
+    const filled=dates.map(d=>e[d]).filter(Boolean);
+    if(!filled.length)continue;
+    const projs=S.projects.filter(p=>p.assignee===mid);
+    const wkDue=projs.flatMap(p=>p.milestones.filter(ms=>ms.deadline&&ms.deadline>=dates[0]&&ms.deadline<=dates[4]));
+    const dr=wkDue.length?wkDue.filter(ms=>ms.status==='hit').length/wkDue.length*100:85;
+    const ur=filled.filter(e=>e.upd==='y').length/5*100;
+    if(dr>=90&&ur>=90)scores.push(4);
+    else if(dr>=80&&ur>=70)scores.push(3);
+    else if(dr>=60&&ur>=50)scores.push(2);
+    else scores.push(1);
+  }
+  if(!scores.length)return null;
+  const avg=scores.reduce((a,b)=>a+b)/scores.length;
+  if(avg>=3.5)return'exceptional';if(avg>=2.5)return'solid';if(avg>=1.5)return'ontrack';return'below';
+}
+function getStreak(mid){let s=0;for(let w=0;w>=-24;w--){const dates=weekDates(w),e=S.entries[mid]||{},filled=dates.map(d=>e[d]).filter(Boolean);if(!filled.length)break;if(filled.filter(x=>x.upd==='y').length/5<0.4)break;s++;}return s;}
+function tierInfo(t){return{null:{l:'Belum ada data',c:'tn'},below:{l:'Below',c:'tb'},ontrack:{l:'On Track',c:'to'},solid:{l:'Solid',c:'ts'},exceptional:{l:'Exceptional',c:'tex'}}[t]||{l:'—',c:'tn'};}
+function drCls(v){if(v===null)return'drb-n';if(v>=90)return'drb-ok';if(v>=70)return'drb-w';return'drb-c';}
+function drCol(v){if(v===null)return'c-neu';if(v>=90)return'c-ok';if(v>=70)return'c-warn';return'c-crit';}
+
+function memberCard(m){
+  const tier=getTier(m.id),ti=tierInfo(tier);
+  const dr=getDeliveryRate(m.id),ur=getUpdateRate(m.id),streak=getStreak(m.id);
+  const streakHtml=streak>1?`<span class="strk"><b>${streak}</b> mg</span>`:'';
+  const e=S.entries[m.id]||{},days=Object.keys(e).sort();
+  const wkUpd=weekDates().filter(d=>e[d]&&e[d].upd==='y').length;
+  const brMap={g:'Mandiri',m:'Wajar',l:'Sering tanya'};
+  const lastBr=days.length?brMap[e[days[days.length-1]]?.br||'m']:'—';
+  const lastAtt=days.length?({h:'Hadir',w:'WFH',n:'Tidak hadir'}[e[days[days.length-1]]?.att||'h']):'—';
+  const lastNote=days.length&&e[days[days.length-1]]?.note;
+  const dotsHtml=buildDots(m.id);
+  const msHtml=buildMsSection(m.id);
+  return`<div class="mc" id="mc-${m.id}">
+    <div class="mch" onclick="toggle('mc-${m.id}')">
+      <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
+      <div class="mi"><div class="mn">${m.name}</div><div class="mr">${m.role}</div></div>
+      ${streakHtml}
+      <span class="drb ${drCls(dr)}" style="margin-right:6px">${dr!==null?dr+'%':'—'}</span>
+      <span class="tier ${ti.c}">${ti.l}</span>
+      <span class="chv">▼</span>
+    </div>
+    <div class="mcd">
+      ${dotsHtml}${msHtml}
+      <div class="div"></div>
+      <div class="kpig">
+        <div class="kpii"><div class="kpil">Delivery rate</div><div class="kpiv ${drCol(dr)}">${dr!==null?dr+'%':'—'}</div></div>
+        <div class="kpii"><div class="kpil">Update ${ch(m.lead)} rate</div><div class="kpiv">${ur!==null?ur+'%':'—'}</div></div>
+        <div class="kpii"><div class="kpil">Update minggu ini</div><div class="kpiv">${wkUpd}/5 hari</div></div>
+        <div class="kpii"><div class="kpil">Streak</div><div class="kpiv">${streak} minggu</div></div>
+        <div class="kpii"><div class="kpil">Brief</div><div class="kpiv">${lastBr}</div></div>
+        <div class="kpii"><div class="kpil">Kehadiran terakhir</div><div class="kpiv">${lastAtt}</div></div>
+        ${lastNote?`<div class="kpii" style="grid-column:1/-1"><div class="kpil">Catatan</div><div class="kpiv" style="font-weight:400;font-size:12px">${lastNote}</div></div>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildDots(mid){
+  const dates=weekDates(),td=today(),e=S.entries[mid]||{};
+  return`<div class="daygrid">${dates.map((d,i)=>{const ok=e[d]&&e[d].upd==='y',fut=d>td;const cls=ok?'dok':fut?'dft':'dms',sym=ok?'✓':fut?'·':'—';return`<div class="dd ${cls}"><div class="ddl">${DN[i]}</div><div class="dds">${sym}</div></div>`;}).join('')}</div>`;
+}
+
+function buildMsSection(mid){
+  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  if(!projs.length)return`<div style="font-size:12px;color:var(--t3);margin-bottom:.875rem;font-family:var(--mono)">Belum ada project aktif</div>`;
+  return projs.map(p=>{
+    const done=p.milestones.filter(ms=>ms.status==='hit').length;
+    const items=p.milestones.map((ms,i)=>{
+      const st=ms.status,rc=st==='hit'?'done':st?'late':'',cc=st==='hit'?'done':st?'late':'',sym=st==='hit'?'✓':st?'!':'';
+      return`<div class="msr ${rc}" onclick="toggleMs('${p.id}',${i})"><div class="mschk ${cc}">${sym}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div></div>`;
+    }).join('');
+    return`<div class="ms-wrap"><div class="ms-proj">${p.name} · ${done}/${p.milestones.length}</div><div class="ms-cols">${items}</div></div>`;
+  }).join('');
+}
+
+function teamBody(){
+  const members=S.members.filter(m=>m.lead===curLead);
+  const byTeam={};members.forEach(m=>{if(!byTeam[m.team])byTeam[m.team]=[];byTeam[m.team].push(m);});
+  return Object.entries(byTeam).map(([team,mems])=>`<div style="margin-bottom:1.5rem"><div style="font-size:12px;font-weight:500;color:var(--t2);margin-bottom:.875rem;padding-bottom:.625rem;border-bottom:1px solid var(--bdr)">${team}</div>${mems.map(m=>memberCard(m)).join('')}</div>`).join('');
+}
+
+function renderWeekly(){
+  const ll=curLead==='yogi'?'Tim Yogi':'Tim Gha';
+  document.getElementById('wk-title').textContent=`Mingguan · ${ll}`;
+  document.getElementById('wk-range').textContent=weekRange();
+  const members=S.members.filter(m=>m.lead===curLead);
+  const drs=members.map(m=>getDeliveryRate(m.id)).filter(v=>v!==null);
+  const urs=members.map(m=>getUpdateRate(m.id)).filter(v=>v!==null);
+  const avgDr=drs.length?Math.round(drs.reduce((a,b)=>a+b)/drs.length):null;
+  const avgUr=urs.length?Math.round(urs.reduce((a,b)=>a+b)/urs.length):null;
+  const below=members.filter(m=>getTier(m.id)==='below').length;
+  const ac=curLead==='yogi'?'ay':'ag';
+  document.getElementById('wk-heroes').innerHTML=`
+    <div class="hero ${ac}"><div class="hero-l">Delivery Rate</div><div class="hero-v ${drCol(avgDr)}">${avgDr!==null?avgDr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
+    <div class="hero"><div class="hero-l">Update ${ch(curLead)} Rate</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
+    <div class="hero"><div class="hero-l">At Risk</div><div class="hero-v ${below>0?'c-crit':'c-ok'}">${below}</div><div class="hero-s">anggota Below tier</div></div>`;
+  document.getElementById('wk-body').innerHTML=teamBody();
+}
+
+function renderMonthly(){
+  const mt=document.getElementById('mo-tabs');
+  if(!mt.children.length){MN.forEach((m,i)=>{const b=document.createElement('button');b.className='mbtn'+(i===curMonth?' on':'');b.textContent=m;b.onclick=()=>{curMonth=i;mt.querySelectorAll('.mbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');renderMonthly();};mt.appendChild(b);});}
+  const members=S.members.filter(m=>m.lead===curLead);
+  const y=new Date().getFullYear();
+  const allDrs=[],allUrs=[];
+  members.forEach(m=>{
+    const pfx=`${y}-${String(curMonth+1).padStart(2,'0')}`;
+    const days=Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx));
+    const ur=days.length?Math.round(days.filter(d=>(S.entries[m.id]||{})[d]?.upd==='y').length/days.length*100):null;
+    if(ur!==null)allUrs.push(ur);
+    const dr=getDeliveryRate(m.id);if(dr!==null)allDrs.push(dr);
+  });
+  const avgDr=allDrs.length?Math.round(allDrs.reduce((a,b)=>a+b)/allDrs.length):null;
+  const avgUr=allUrs.length?Math.round(allUrs.reduce((a,b)=>a+b)/allUrs.length):null;
+  document.getElementById('mo-heroes').innerHTML=`
+    <div class="hero"><div class="hero-l">Delivery Rate ${MN[curMonth]}</div><div class="hero-v ${drCol(avgDr)}">${avgDr!==null?avgDr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
+    <div class="hero"><div class="hero-l">Update Rate ${MN[curMonth]}</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>`;
+  document.getElementById('mo-body').innerHTML=members.map(m=>buildMonthReview(m,curMonth,y)).join('');
+}
+
+function buildMonthReview(m,month,y){
+  const pfx=`${y}-${String(month+1).padStart(2,'0')}`;
+  const entries=S.entries[m.id]||{};
+  const days=Object.keys(entries).filter(k=>k.startsWith(pfx)).sort();
+  const tier=getMonthTier(m.id,month),ti=tierInfo(tier);
+  const dr=getDeliveryRate(m.id);
+  const ur=days.length?Math.round(days.filter(d=>entries[d].upd==='y').length/days.length*100):null;
+  const prevTier=getMonthTier(m.id,month-1);
+  const tierChg=tier&&prevTier?(TORD[tier]>TORD[prevTier]?'↑':TORD[tier]<TORD[prevTier]?'↓':'→'):'';
+  const pos=[],neg=[],act=[];
+  if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Update ${ch(m.lead)} konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Update ${ch(m.lead)} kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Update ${ch(m.lead)} sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
+  if(dr!==null){if(dr>=90)pos.push(`Delivery rate sangat baik — ${dr}% milestone on-time`);else if(dr>=70)neg.push(`Beberapa milestone terlambat — delivery rate ${dr}%`);else neg.push(`Delivery rate kritis — ${dr}%, banyak milestone kelewat`);}
+  const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>p.milestones.filter(ms=>ms.status==='late')).map(ms=>ms.name);
+  if(lateMs.length)neg.push(`Milestone terlambat: ${lateMs.slice(0,3).join(', ')}${lateMs.length>3?` (+${lateMs.length-3} lainnya)`:''}`);
+  const brC={g:0,m:0,l:0};days.forEach(d=>{const b=entries[d]?.br||'m';brC[b]++;});
+  if(brC.l>brC.g&&brC.l>=2)neg.push(`Pemahaman brief menurun — ${brC.l} hari sering tanya dasar`);
+  else if(brC.g>=days.length*0.6)pos.push(`Pemahaman brief baik — mandiri di ${brC.g}/${days.length} hari`);
+  const attH=days.filter(d=>entries[d]?.att==='h').length;
+  if(days.length&&m.team!=='Font'){const ar=Math.round(attH/days.length*100);if(ar>=80)pos.push(`Kehadiran studio baik — ${attH}/${days.length} hari (${ar}%)`);else if(ar<60)neg.push(`Kehadiran studio rendah — ${attH}/${days.length} hari (${ar}%)`);}
+  if(lateMs.length)act.push(`Tanya hambatan di: ${lateMs.slice(0,2).join(', ')}`);
+  if(ur!==null&&ur<70)act.push(`Ingatkan pentingnya update ${ch(m.lead)} harian sebagai bukti progres`);
+  if(brC.l>=2)act.push(`Review apakah brief perlu diperjelas dari sisi CD`);
+  if(!pos.length&&!neg.length)act.push('Belum ada data cukup untuk bulan ini');
+  if(tier==='exceptional')act.push('Pertimbangkan tanggung jawab atau target lebih besar');
+  const mkItems=(arr,dot)=>arr.map(t=>`<div class="ritem"><span class="rdot ${dot}"></span><span>${t}</span></div>`).join('');
+  return`<div class="rcard" id="rc-${m.id}">
+    <div class="rch" onclick="toggle('rc-${m.id}')">
+      <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
+      <div class="mi"><div class="mn">${m.name}</div><div class="mr">${m.role}</div></div>
+      <span class="drb ${drCls(dr)}" style="margin-right:6px">${dr!==null?dr+'%':'—'}</span>
+      <span class="tier ${ti.c}">${ti.l}${tierChg?' '+tierChg:''}</span>
+      <span class="chv">▼</span>
+    </div>
+    <div class="rcd">
+      ${pos.length?`<div class="rsec"><div class="rsec-t pos">Yang konsisten</div>${mkItems(pos,'pos')}</div>`:''}
+      ${neg.length?`<div class="rsec"><div class="rsec-t neg">Perlu dibahas</div>${mkItems(neg,'neg')}</div>`:''}
+      ${act.length?`<div class="rsec"><div class="rsec-t act">Rekomendasi topik 1-on-1</div>${mkItems(act,'act')}</div>`:''}
+    </div>
+  </div>`;
+}
+
+function renderYearly(){
+  const y=new Date().getFullYear(),ll=curLead==='yogi'?'Tim Yogi':'Tim Gha';
+  document.getElementById('yr-title').textContent=`Tahunan · ${ll}`;
+  document.getElementById('yr-sub').textContent=`${y}`;
+  const members=S.members.filter(m=>m.lead===curLead);
+  const allDrs=members.map(m=>getDeliveryRate(m.id)).filter(v=>v!==null);
+  const avgDr=allDrs.length?Math.round(allDrs.reduce((a,b)=>a+b)/allDrs.length):null;
+  const ac=curLead==='yogi'?'ay':'ag';
+  document.getElementById('yr-heroes').innerHTML=`
+    <div class="hero ${ac}"><div class="hero-l">Delivery Rate keseluruhan</div><div class="hero-v ${drCol(avgDr)}">${avgDr!==null?avgDr+'%':'—'}</div><div class="hero-s">rata-rata semua project</div></div>
+    <div class="hero"><div class="hero-l">Anggota</div><div class="hero-v">${members.length}</div><div class="hero-s">aktif ${y}</div></div>`;
+  const tierBarCls={exceptional:'yb-ok',solid:'yb-ok',ontrack:'yb-w',below:'yb-c',null:'yb-n'};
+  const tierShort={exceptional:'EX',solid:'SO',ontrack:'OT',below:'BL',null:'—'};
+  document.getElementById('yr-tl').innerHTML=members.map(m=>{
+    const bars=Array.from({length:12},(_,mo)=>{const t=getMonthTier(m.id,mo);return`<div class="yr-bar ${tierBarCls[t]}">${tierShort[t]}</div>`;}).join('');
+    const lbls=MN.map(mn=>`<div class="yr-ml">${mn}</div>`).join('');
+    return`<div class="yr-tl-wrap"><div class="yr-name">${m.name} <span style="color:var(--t3);font-weight:400;font-size:11px">· ${m.role}</span></div><div class="yr-bars">${bars}</div><div class="yr-mls">${lbls}</div></div>`;
+  }).join('');
+  document.getElementById('yr-sal').innerHTML=members.map(m=>{
+    const tiers=Array.from({length:12},(_,mo)=>getMonthTier(m.id,mo)).filter(Boolean);
+    if(!tiers.length)return`<div class="sal warn"><div class="sal-t">${m.name}</div><div class="sal-s">Belum ada data cukup</div></div>`;
+    let maxEx=0,cur=0;tiers.forEach(t=>{if(t==='exceptional'){cur++;maxEx=Math.max(maxEx,cur);}else cur=0;});
+    const solidMos=tiers.filter(t=>t==='solid'||t==='exceptional').length;
+    let maxBel=0,curB=0;tiers.forEach(t=>{if(t==='below'){curB++;maxBel=Math.max(maxBel,curB);}else curB=0;});
+    if(maxEx>=3||solidMos>=6)return`<div class="sal ok"><div class="sal-t">${m.name} — Eligible kenaikan gaji</div><div class="sal-s">${maxEx>=3?`Exceptional ${maxEx} bulan berturut. `:''}${solidMos>=6?`Solid/Exceptional ${solidMos}/12 bulan.`:''}</div></div>`;
+    if(maxBel>=3)return`<div class="sal crit"><div class="sal-t">${m.name} — Evaluasi lanjutan</div><div class="sal-s">Below tier ${maxBel} bulan berturut — perlu tindakan konkret</div></div>`;
+    if(maxBel>=2)return`<div class="sal crit"><div class="sal-t">${m.name} — Performance talk wajib</div><div class="sal-s">Below tier ${maxBel} bulan berturut</div></div>`;
+    return`<div class="sal warn"><div class="sal-t">${m.name} — Review — target Solid dulu</div><div class="sal-s">On Track stabil. ${solidMos} bulan di Solid/Exceptional dari ${tiers.length} bulan tercatat</div></div>`;
+  }).join('');
+  const colors=['#1B4F72','#512E5F','#1E8449','#7D6608','#922B21','#1B4F72'];
+  mkChart('ch-yr',MN,members.map((m,i)=>({label:m.name,data:Array.from({length:12},(_,mo)=>{const pfx=`${y}-${String(mo+1).padStart(2,'0')}`;return Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx)&&(S.entries[m.id]||{})[k]?.upd==='y').length;}),borderColor:colors[i%colors.length],backgroundColor:'transparent',tension:.4,pointRadius:3,spanGaps:true})));
+}
+
+function renderInput(){
+  const members=S.members.filter(m=>m.lead===curLead);
+  const sel=document.getElementById('inp-m');
+  sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
+  document.getElementById('inp-d').value=today();
+  onInpMember();
+}
+
+function onInpMember(){
+  const mid=document.getElementById('inp-m')?.value;
+  const m=S.members.find(x=>x.id===mid);if(!m)return;
+  const channel=ch(m.lead);
+  document.getElementById('inp-meta').textContent=`${m.team} · ${m.role} · Update via ${channel}`;
+  document.getElementById('upd-lbl').textContent=`Setor update ${channel}`;
+  document.getElementById('inp-sub').textContent=`Input harian · update via ${channel}`;
+  inpMsCheck={};
+  const proj=S.projects.find(p=>p.assignee===mid&&p.active);
+  const list=document.getElementById('inp-ms');
+  if(!proj){list.innerHTML=`<div style="font-size:12px;color:var(--t3);font-family:var(--mono)">Belum ada project aktif</div>`;return;}
+  const pending=proj.milestones.filter(ms=>!ms.status);
+  if(!pending.length){list.innerHTML=`<div style="font-size:12px;color:var(--ok);font-family:var(--mono)">Semua milestone selesai ✓</div>`;return;}
+  list.innerHTML=pending.map((ms,i)=>`<div class="msr" id="ims-${i}" onclick="toggleInpMs(${i})"><div class="mschk" id="imc-${i}"></div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div></div>`).join('');
+}
+
+function toggleInpMs(i){
+  inpMsCheck[i]=!inpMsCheck[i];
+  const c=document.getElementById('imc-'+i),r=document.getElementById('ims-'+i);
+  if(c){c.classList.toggle('done',inpMsCheck[i]);c.textContent=inpMsCheck[i]?'✓':'';}
+  if(r)r.classList.toggle('done',inpMsCheck[i]);
+}
+
+function saveEntry(){
+  const mid=document.getElementById('inp-m').value;
+  const date=document.getElementById('inp-d').value;
+  const note=document.getElementById('inp-note').value.trim();
+  if(!S.entries[mid])S.entries[mid]={};
+  S.entries[mid][date]={att:fAtt,upd:fUpd,br:fBr,note};
+  const proj=S.projects.find(p=>p.assignee===mid&&p.active);
+  if(proj){
+    const pending=proj.milestones.filter(ms=>!ms.status);
+    Object.keys(inpMsCheck).forEach(i=>{
+      if(inpMsCheck[i]&&pending[i]){
+        if(!pending[i].deadline)pending[i].status='hit';
+        else pending[i].status=pending[i].deadline>=date?'hit':'late';
+      }
+    });
+  }
+  inpMsCheck={};save();
+  showToast(`Tersimpan · ${S.members.find(m=>m.id===mid)?.name} · ${date}`);
+  document.getElementById('inp-note').value='';
+  onInpMember();
+}
+
+function renderProjects(){
+  const members=S.members.filter(m=>m.lead===curLead);
+  const active=S.projects.filter(p=>p.active&&members.some(m=>m.id===p.assignee));
+  document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
+    const asgn=S.members.find(m=>m.id===p.assignee);
+    const done=p.milestones.filter(ms=>ms.status==='hit').length;
+    const items=p.milestones.map((ms,i)=>`<div class="msr ${ms.status==='hit'?'done':ms.status?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${ms.status==='hit'?'done':ms.status?'late':''}">${ms.status==='hit'?'✓':ms.status?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div><span class="tier ${ms.status==='hit'?'ts':ms.status?'tb':'tn'}" style="font-size:10px">${ms.status==='hit'?'selesai':ms.status?'terlambat':'pending'}</span></div>`).join('');
+    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${p.milestones.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
+  }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
+  const sel=document.getElementById('np-assign');
+  sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
+  buildTplGrid();
+}
+
+function buildTplGrid(){
+  document.getElementById('tpl-grid').innerHTML=Object.entries(TEMPLATES).map(([name,tpl])=>`<div class="tc${selTpl===name?' on':''}" onclick="selectTpl('${name}')"><div class="tt">${name}</div><div class="ts2">${tpl.split('\n').length} milestone</div></div>`).join('');
+}
+
+function selectTpl(name){selTpl=name;buildTplGrid();document.getElementById('np-ms').value=fillTpl(TEMPLATES[name]);}
+function onNpAssign(){if(selTpl)selectTpl(selTpl);}
+
+function createProject(){
+  const name=document.getElementById('np-name').value.trim();
+  const assignee=document.getElementById('np-assign').value;
+  const raw=document.getElementById('np-ms').value.trim();
+  if(!name||!raw){showToast('Isi nama dan milestone dulu');return;}
+  const milestones=raw.split('\n').map(l=>{const[n,d]=l.split('|').map(s=>s.trim());return{name:n,deadline:d||'',status:null};}).filter(m=>m.name);
+  S.projects.push({id:'p_'+Date.now(),name,assignee,milestones,active:true});
+  save();document.getElementById('np-name').value='';document.getElementById('np-ms').value='';selTpl=null;
+  showToast('Project dibuat — '+name);renderProjects();
+}
+
+function toggleProjMs(pid,idx){
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  const ms=p.milestones[idx],td=today();
+  if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');
+  else ms.status=null;
+  save();renderProjects();
+}
+
+function toggleMs(pid,idx){
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  const ms=p.milestones[idx],td=today();
+  if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');
+  else ms.status=null;
+  save();renderPage(curPage);
+}
+
+function closeProj(pid){const p=S.projects.find(x=>x.id===pid);if(p)p.active=false;save();renderProjects();}
+
+function renderSettings(){
+  const members=S.members.filter(m=>m.lead===curLead);
+  document.getElementById('set-list').innerHTML=members.length?members.map(m=>`<div class="smr"><div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div><div style="flex:1"><div style="font-size:13px;font-weight:500">${m.name}</div><div style="font-size:11px;color:var(--t3)">${m.team} · ${m.role}</div></div><button style="font-size:11px;font-family:var(--mono);padding:4px 9px;border-radius:4px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--crit)" onclick="removeMember('${m.id}')">Hapus</button></div>`).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0">Belum ada anggota</div>`;
+}
+
+function addMember(){
+  const name=document.getElementById('sn-n').value.trim();
+  const team=document.getElementById('sn-t').value;
+  const role=document.getElementById('sn-r').value.trim();
+  if(!name)return;
+  S.members.push({id:name.toLowerCase().replace(/\s/g,'_')+'_'+Date.now(),name,team,role,lead:team==='Font'?'gha':'yogi',av:AVS[S.members.length%AVS.length]});
+  save();renderSettings();
+  document.getElementById('sn-n').value='';document.getElementById('sn-r').value='';
+  showToast('Ditambah — '+name);
+}
+
+function removeMember(id){const m=S.members.find(x=>x.id===id);S.members=S.members.filter(x=>x.id!==id);save();renderSettings();showToast('Dihapus — '+(m?.name||''));}
+
+function goPage(p,btn){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.si').forEach(x=>x.classList.remove('on','ay','ag'));
+  document.getElementById('page-'+p)?.classList.add('on');
+  btn.classList.add('on',curLead==='yogi'?'ay':'ag');
+  curPage=p;window._curPage=p;renderPage(p);
+}
+function renderPage(p){const fn={weekly:renderWeekly,monthly:renderMonthly,yearly:renderYearly,input:renderInput,projects:renderProjects,settings:renderSettings};fn[p]?.();}
+window.renderPage=renderPage;
+function setLead(lead,btn){curLead=lead;document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('.si.on').forEach(x=>{x.classList.remove('ay','ag');x.classList.add(lead==='yogi'?'ay':'ag');});renderPage(curPage);}
+function toggle(id){document.getElementById(id)?.classList.toggle('open');}
+
+function setO(type,val){
+  const maps={att:{ids:['att-h','att-w','att-n'],vals:['h','w','n']},upd:{ids:['upd-y','upd-n'],vals:['y','n']},br:{ids:['br-g','br-m','br-l'],vals:['g','m','l']}};
+  const{ids,vals}=maps[type];
+  ids.forEach(id=>document.getElementById(id)?.classList.remove('on'));
+  document.getElementById(ids[vals.indexOf(val)])?.classList.add('on');
+  if(type==='att')fAtt=val;if(type==='upd')fUpd=val;if(type==='br')fBr=val;
+}
+
+function mkChart(id,labels,datasets){
+  const c=document.getElementById(id);if(!c)return;
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart(c,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:11},color:'#A4A29A'}}},scales:{y:{min:0,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},color:'#A4A29A'}},x:{grid:{display:false},ticks:{font:{size:11},color:'#A4A29A'}}}}});
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+document.getElementById('wkbadge').textContent=weekRange();
+// Initial render with default data while waiting for Firebase
+renderWeekly();
+// Fallback: hide loading after 5s even if Firebase is slow
+setTimeout(()=>{const ov=document.getElementById('fb-loading');if(ov)ov.style.display='none';},5000);
+</script>
+</body>
+</html>
