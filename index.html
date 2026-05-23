@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Invasi Studio — KPI</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#F5F4F0;--surf:#FFF;--bdr:#E0DED6;--bdrx:#C2C0B6;
@@ -17,21 +17,27 @@
   --crit:#7B1A1A;--crit-l:#FFEBEE;--crit-b:#FFCDD2;
   --info:#0D3B6E;--info-l:#E3F2FD;--info-b:#90CAF9;
   --neu:#4A4A44;--neu-l:#F0EFEB;
+  --sb-w:190px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px;line-height:1.5;min-height:100vh}
-.topbar{display:flex;align-items:center;background:var(--surf);border-bottom:1px solid var(--bdr);padding:0 1.75rem;height:50px;position:sticky;top:0;z-index:20}
-.brand{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;color:var(--tx);margin-right:2rem;white-space:nowrap}
-.ltabs{display:flex;height:50px}
-.ltab{padding:0 1.25rem;height:100%;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;color:var(--t2);transition:all .15s}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;background:var(--surf);border-bottom:1px solid var(--bdr);padding:0 1rem;height:50px;position:sticky;top:0;z-index:30;gap:8px}
+.brand{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.1em;color:var(--tx);white-space:nowrap;margin-right:.5rem}
+.ltabs{display:flex;height:50px;flex:1}
+.ltab{padding:0 1rem;height:100%;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;color:var(--t2);transition:all .15s}
 .ltab.yogi.on{color:var(--yogi);border-bottom-color:var(--yogi)}
 .ltab.gha.on{color:var(--gha);border-bottom-color:var(--gha)}
-.ldot{width:7px;height:7px;border-radius:50%}
+.ldot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .dy{background:var(--yogi)}.dg{background:var(--gha)}
-.wkbadge{font-family:var(--mono);font-size:11px;color:var(--t3);margin-left:auto;padding:2px 8px;border:1px solid var(--bdr);border-radius:4px}
+.wkbadge{font-family:var(--mono);font-size:11px;color:var(--t3);padding:2px 8px;border:1px solid var(--bdr);border-radius:4px;white-space:nowrap}
+.menu-btn{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--t2);font-size:18px;line-height:1}
+
+/* ── LAYOUT ── */
 .shell{display:flex;min-height:calc(100vh - 50px)}
-.sidebar{width:190px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);padding:1rem .625rem;position:sticky;top:50px;height:calc(100vh - 50px);overflow-y:auto}
-.main{flex:1;padding:1.75rem 2rem;max-width:880px;min-width:0}
+.sidebar{width:var(--sb-w);flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);padding:1rem .625rem;position:sticky;top:50px;height:calc(100vh - 50px);overflow-y:auto;transition:transform .2s}
+.main{flex:1;padding:1.75rem 2rem;max-width:900px;min-width:0}
 .snl{font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);padding:0 .625rem;margin-bottom:3px;margin-top:.875rem}
 .snl:first-child{margin-top:0}
 .si{display:flex;align-items:center;gap:7px;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--t2);transition:all .12s;border:none;background:none;width:100%;text-align:left}
@@ -40,16 +46,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .si.on.ay{background:var(--yogi-l);color:var(--yogi)}
 .si.on.ag{background:var(--gha-l);color:var(--gha)}
 .page{display:none}.page.on{display:block}
+
+/* ── PAGE HEADER ── */
 .ph{margin-bottom:1.5rem;padding-bottom:1.125rem;border-bottom:1px solid var(--bdr)}
 .pht{font-size:18px;font-weight:500;letter-spacing:-.01em}
 .phs{font-size:12px;color:var(--t2);margin-top:2px}
-.hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px;margin-bottom:1.5rem}
+
+/* ── HERO CARDS ── */
+.hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem}
 .hero{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:.875rem 1.125rem}
 .hero.ay{border-top:3px solid var(--yogi)}.hero.ag{border-top:3px solid var(--gha)}
 .hero-l{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:5px}
 .hero-v{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1;margin-bottom:3px}
 .hero-s{font-size:11px;color:var(--t2)}
 .c-ok{color:var(--ok)}.c-warn{color:var(--warn)}.c-crit{color:var(--crit)}.c-neu{color:var(--t3)}
+
+/* ── TIER & DR BADGES ── */
 .tier{display:inline-flex;font-family:var(--mono);font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px;white-space:nowrap;letter-spacing:.03em}
 .tn{background:var(--neu-l);color:var(--neu)}.tb{background:var(--crit-l);color:var(--crit)}
 .to{background:var(--warn-l);color:var(--warn)}.ts{background:var(--info-l);color:var(--info)}
@@ -57,6 +69,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .drb{font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 8px;border-radius:3px}
 .drb-ok{background:var(--ok-l);color:var(--ok)}.drb-w{background:var(--warn-l);color:var(--warn)}
 .drb-c{background:var(--crit-l);color:var(--crit)}.drb-n{background:var(--neu-l);color:var(--neu)}
+
+/* ── MEMBER CARD ── */
 .mc{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:10px;overflow:hidden}
 .mch{display:flex;align-items:center;gap:10px;padding:.875rem 1rem;cursor:pointer;transition:background .1s}
 .mch:hover{background:var(--bg)}
@@ -71,13 +85,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .mc.open .chv{transform:rotate(180deg)}
 .mcd{display:none;border-top:1px solid var(--bdr);padding:1rem}
 .mc.open .mcd{display:block}
+
+/* ── DAY GRID ── */
 .daygrid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:.875rem}
-.dd{border-radius:6px;padding:6px 4px;text-align:center}
+.dd{border-radius:6px;padding:6px 4px;text-align:center;cursor:default}
 .ddl{font-size:10px;color:var(--t3);margin-bottom:2px;font-family:var(--mono)}
 .dds{font-size:11px;font-weight:500}
 .dok{background:#E8F5E9}.dok .dds{color:var(--ok)}
 .dms{background:#FFEBEE}.dms .dds{color:var(--crit)}
 .dft{background:var(--bg)}.dft .dds{color:var(--t3)}
+.dwfh{background:#FFF8E1}.dwfh .dds{color:var(--warn)}
+
+/* ── MILESTONE ── */
 .ms-wrap{margin-bottom:.875rem}
 .ms-proj{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:7px}
 .ms-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px}
@@ -90,10 +109,29 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .msn{font-size:12px;font-weight:500;flex:1;min-width:0}
 .msr.done .msn{text-decoration:line-through;color:var(--t2)}
 .msd{font-family:var(--mono);font-size:10px;color:var(--t3)}
+
+/* ── KPI GRID ── */
 .kpig{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:.875rem}
 .kpii{background:var(--bg);border-radius:6px;padding:7px 10px}
 .kpil{font-size:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:500;color:var(--t3);margin-bottom:2px}
 .kpiv{font-size:13px;font-weight:500;color:var(--tx)}
+
+/* ── BRIEF CONTEXT (baru) ── */
+.brief-ctx{background:var(--bg);border-radius:8px;padding:10px 12px;margin-bottom:.875rem;border-left:3px solid var(--bdrx)}
+.brief-ctx-title{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px}
+.brief-ctx-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);padding:3px 0}
+.brief-ctx-name{font-weight:500;color:var(--tx);flex:1}
+.brief-ctx-prog{font-family:var(--mono);font-size:11px;color:var(--t3)}
+
+/* ── CATATAN HARIAN (baru) ── */
+.notes-list{margin-bottom:.875rem}
+.note-item{padding:6px 0;border-bottom:1px solid var(--bdr);font-size:12px;color:var(--t2);display:flex;gap:8px}
+.note-item:last-child{border-bottom:none}
+.note-date{font-family:var(--mono);font-size:11px;color:var(--t3);flex-shrink:0;margin-top:1px;min-width:32px}
+.note-text{flex:1;line-height:1.5}
+.note-absent{color:var(--crit);font-size:10px;font-family:var(--mono);margin-left:4px}
+
+/* ── MONTHLY ── */
 .div{height:1px;background:var(--bdr);margin:.875rem 0}
 .sec{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:10px}
 .months{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:1.25rem}
@@ -111,6 +149,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .ritem:last-child{border-bottom:none}
 .rdot{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:5px}
 .rdot.pos{background:var(--ok)}.rdot.neg{background:var(--crit)}.rdot.act{background:var(--info)}
+
+/* ── YEARLY ── */
 .yr-tl-wrap{margin-bottom:1rem}
 .yr-name{font-size:12px;font-weight:500;margin-bottom:6px;color:var(--t2)}
 .yr-bars{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin-bottom:3px}
@@ -123,6 +163,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .sal.ok{background:var(--ok-l);border-color:var(--ok-b)}.sal.warn{background:var(--warn-l);border-color:var(--warn-b)}
 .sal.crit{background:var(--crit-l);border-color:var(--crit-b)}
 .sal-t{font-size:13px;font-weight:500}.sal-s{font-size:12px;color:var(--t2);margin-top:2px}
+
+/* ── FORM ── */
 .fcard{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:1.25rem;margin-bottom:1rem}
 .ftitle{font-size:13px;font-weight:500;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
 .frow{margin-bottom:.875rem}
@@ -135,18 +177,42 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
 .opt:hover{border-color:var(--bdrx);color:var(--tx)}.opt.on{background:var(--tx);color:#fff;border-color:var(--tx)}
 .sbtn{width:100%;padding:9px;font-size:13px;font-weight:500;font-family:var(--sans);border:none;border-radius:7px;background:var(--tx);color:#fff;cursor:pointer;margin-top:.5rem;transition:opacity .12s}
 .sbtn:hover{opacity:.85}.sbtn.ghost{background:var(--bg);color:var(--tx);border:1px solid var(--bdr)}.sbtn.ghost:hover{background:var(--bdr)}
+
+/* ── PROJECT ── */
 .pcard{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:1rem;margin-bottom:10px}
 .pt{font-size:14px;font-weight:500}.pm{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:2px;margin-bottom:.875rem}
 .pcols{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px;margin-bottom:1rem}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:1rem}
 .tc{background:var(--bg);border:1px solid var(--bdr);border-radius:7px;padding:.75rem 1rem;cursor:pointer;transition:all .12s}
 .tc:hover,.tc.on{border-color:var(--bdrx);background:var(--surf)}
 .tt{font-size:12px;font-weight:500;margin-bottom:2px}.ts2{font-size:11px;color:var(--t3)}
 .chwrap{position:relative;height:155px;margin:1rem 0}
 .smr{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;margin-bottom:8px}
+
+/* ── TOAST ── */
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--tx);color:#fff;font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:6px;opacity:0;transform:translateY(6px);transition:all .2s;pointer-events:none;z-index:999}
 .toast.show{opacity:1;transform:translateY(0)}
-@media(max-width:640px){.sidebar{display:none}.main{padding:1rem}.ms-cols,.kpig,.pcols,.tgrid{grid-template-columns:1fr}.yr-bars,.yr-mls{grid-template-columns:repeat(6,1fr)}}
+
+/* ── OVERLAY (mobile sidebar) ── */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:25}
+.sb-overlay.on{display:block}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .menu-btn{display:flex;align-items:center;justify-content:center}
+  .sidebar{position:fixed;top:50px;left:0;height:calc(100vh - 50px);z-index:26;transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .main{padding:1rem}
+  .ms-cols,.kpig,.pcols,.tgrid{grid-template-columns:1fr}
+  .yr-bars,.yr-mls{grid-template-columns:repeat(6,1fr)}
+  .hero-row{grid-template-columns:repeat(2,1fr)}
+  .wkbadge{display:none}
+  .brand{font-size:10px}
+}
+@media(max-width:400px){
+  .hero-row{grid-template-columns:1fr}
+  .daygrid{gap:3px}
+}
 </style>
 </head>
 <body>
@@ -155,7 +221,10 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
   <div style="font-size:13px;color:#68665E">Menghubungkan ke database...</div>
 </div>
 <div class="toast" id="toast"></div>
+<div class="sb-overlay" id="sb-overlay" onclick="closeSidebar()"></div>
+
 <div class="topbar">
+  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
   <span class="brand">INVASI STUDIO</span>
   <div class="ltabs">
     <button class="ltab yogi on" onclick="setLead('yogi',this)"><span class="ldot dy"></span>Tim Yogi</button>
@@ -163,8 +232,9 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
   </div>
   <span class="wkbadge" id="wkbadge"></span>
 </div>
+
 <div class="shell">
-  <nav class="sidebar">
+  <nav class="sidebar" id="sidebar">
     <div class="snl">Review</div>
     <button class="si on ay" onclick="goPage('weekly',this)">Mingguan</button>
     <button class="si" onclick="goPage('monthly',this)">Bulanan</button>
@@ -201,7 +271,6 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
       <div class="chwrap"><canvas id="ch-yr"></canvas></div>
     </div>
 
-
     <div class="page" id="page-input">
       <div class="ph"><div class="pht">Input harian</div><div class="phs" id="inp-date-label"></div></div>
       <div id="inp-member-tabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem"></div>
@@ -218,7 +287,7 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
         <div class="frow"><label class="flbl">Assign ke</label><select class="fc" id="np-assign" onchange="onNpAssign()"></select></div>
         <div class="frow"><label class="flbl">Pilih template</label><div class="tgrid" id="tpl-grid"></div></div>
         <div class="frow">
-          <label class="flbl">Milestone — Nama | YYYY-MM-DD (tanpa tanggal untuk video: tulis Nama saja)</label>
+          <label class="flbl">Milestone — Nama | YYYY-MM-DD</label>
           <textarea class="fc" id="np-ms" rows="7"></textarea>
         </div>
         <button class="sbtn" onclick="createProject()">Buat project</button>
@@ -246,44 +315,24 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDXaaTr-gFkfY_5Ikmni8cz6UIbKzEGEns",
-  authDomain: "invasi-kpi.firebaseapp.com",
-  databaseURL: "https://invasi-kpi-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "invasi-kpi",
-  storageBucket: "invasi-kpi.firebasestorage.app",
-  messagingSenderId: "857676439142",
-  appId: "1:857676439142:web:e6f0eb5d2e0799cedc57a7"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const dbRef = ref(db, 'invasi_kpi');
-
-// Override save: write to Firebase
-window._fbSave = function(data) {
-  set(dbRef, data).catch(e => console.error('Firebase save error:', e));
-};
-
-// Listen for remote changes and sync to local state
-onValue(dbRef, (snapshot) => {
-  const val = snapshot.val();
-  if (val) {
-    // Merge remote into S without losing local structure
-    if (val.members) S.members = val.members;
-    if (val.entries) S.entries = val.entries;
-    if (val.projects) S.projects = val.projects;
-    // Re-render current page
-    try { renderPage(window._curPage || 'weekly'); } catch(e) {}
+const firebaseConfig={apiKey:"AIzaSyDXaaTr-gFkfY_5Ikmni8cz6UIbKzEGEns",authDomain:"invasi-kpi.firebaseapp.com",databaseURL:"https://invasi-kpi-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"invasi-kpi",storageBucket:"invasi-kpi.firebasestorage.app",messagingSenderId:"857676439142",appId:"1:857676439142:web:e6f0eb5d2e0799cedc57a7"};
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
+const dbRef=ref(db,'invasi_kpi');
+window._fbSave=function(data){set(dbRef,data).catch(e=>console.error('Firebase save error:',e));};
+onValue(dbRef,(snapshot)=>{
+  const val=snapshot.val();
+  if(val){
+    if(val.members)S.members=val.members;
+    if(val.entries)S.entries=val.entries;
+    if(val.projects)S.projects=val.projects;
+    try{renderPage(window._curPage||'weekly');}catch(e){}
   }
-  // Hide loading overlay once data arrives
-  const ov = document.getElementById('fb-loading');
-  if (ov) ov.style.display = 'none';
+  const ov=document.getElementById('fb-loading');
+  if(ov)ov.style.display='none';
 });
 </script>
 <script>
-const SK='invasi_kpi_v5';
 const MN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'];
 const DN=['Sen','Sel','Rab','Kam','Jum'];
 const AVS=['a0','a1','a2','a3','a4','a5'];
@@ -304,13 +353,12 @@ const DEF={
   ],
   entries:{},projects:[]
 };
-let S=loadState();
+let S=JSON.parse(JSON.stringify(DEF));
 let curLead='yogi',curMonth=new Date().getMonth(),curPage='weekly';
-let charts={},fAtt='h',fUpd='y',fBr='m',inpMsCheck={},selTpl=null;
+let charts={},selTpl=null,curInpMember=null,inpMsChecked={};
+let fAttL='h',fUpdL='y',fBrL='m',fAbsReason='';
 
-function loadState(){return JSON.parse(JSON.stringify(DEF));}
 function save(){if(window._fbSave)window._fbSave(S);}
-
 function weekDates(off=0){const n=new Date(),dy=n.getDay()||7;const m=new Date(n);m.setDate(n.getDate()-dy+1+off*7);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});}
 function today(){return new Date().toISOString().slice(0,10);}
 function addDays(date,n){const d=new Date(date);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
@@ -318,7 +366,21 @@ function fmtDate(s){return s?s.slice(5).replace('-','/'):'—';}
 function weekRange(){const d=weekDates();return d[0].slice(5).replace('-','/')+'–'+d[4].slice(5).replace('-','/');}
 function fillTpl(tpl){const d=weekDates();let o=tpl.replace(/{MON}/g,d[0]).replace(/{TUE}/g,d[1]).replace(/{WED}/g,d[2]).replace(/{THU}/g,d[3]).replace(/{FRI}/g,d[4]);const b=today();return o.replace(/\{D\+(\d+)\}/g,(_,n)=>addDays(b,parseInt(n)));}
 function ch(lead){return lead==='gha'?'Telegram':'WA';}
+function formatDisplayDate(d){const days=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];const dt=new Date(d+'T00:00:00');return`${days[dt.getDay()]} · ${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`;}
 
+// ── SIDEBAR MOBILE ──
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sb-overlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('on');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').classList.remove('on');
+}
+
+// ── METRICS ──
 function getDeliveryRate(mid){
   const projs=S.projects.filter(p=>p.assignee===mid);
   const due=projs.flatMap(p=>p.milestones.filter(ms=>ms.deadline&&ms.deadline<=today()));
@@ -366,46 +428,50 @@ function tierInfo(t){return{null:{l:'Belum ada data',c:'tn'},below:{l:'Below',c:
 function drCls(v){if(v===null)return'drb-n';if(v>=90)return'drb-ok';if(v>=70)return'drb-w';return'drb-c';}
 function drCol(v){if(v===null)return'c-neu';if(v>=90)return'c-ok';if(v>=70)return'c-warn';return'c-crit';}
 
-function memberCard(m){
-  const tier=getTier(m.id),ti=tierInfo(tier);
-  const dr=getDeliveryRate(m.id),ur=getUpdateRate(m.id),streak=getStreak(m.id);
-  const streakHtml=streak>1?`<span class="strk"><b>${streak}</b> mg</span>`:'';
-  const e=S.entries[m.id]||{},days=Object.keys(e).sort();
-  const wkUpd=weekDates().filter(d=>e[d]&&e[d].upd==='y').length;
-  const brMap={g:'Mandiri',m:'Wajar',l:'Sering tanya'};
-  const lastBr=days.length?brMap[e[days[days.length-1]]?.br||'m']:'—';
-  const lastAtt=days.length?({h:'Hadir',w:'WFH',n:'Tidak hadir'}[e[days[days.length-1]]?.att||'h']):'—';
-  const lastNote=days.length&&e[days[days.length-1]]?.note;
-  const dotsHtml=buildDots(m.id);
-  const msHtml=buildMsSection(m.id);
-  return`<div class="mc" id="mc-${m.id}">
-    <div class="mch" onclick="toggle('mc-${m.id}')">
-      <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
-      <div class="mi"><div class="mn">${m.name}</div><div class="mr">${m.role}</div></div>
-      ${streakHtml}
-      <span class="drb ${drCls(dr)}" style="margin-right:6px">${dr!==null?dr+'%':'—'}</span>
-      <span class="tier ${ti.c}">${ti.l}</span>
-      <span class="chv">▼</span>
-    </div>
-    <div class="mcd">
-      ${dotsHtml}${msHtml}
-      <div class="div"></div>
-      <div class="kpig">
-        <div class="kpii"><div class="kpil">Delivery rate</div><div class="kpiv ${drCol(dr)}">${dr!==null?dr+'%':'—'}</div></div>
-        <div class="kpii"><div class="kpil">Update ${ch(m.lead)} rate</div><div class="kpiv">${ur!==null?ur+'%':'—'}</div></div>
-        <div class="kpii"><div class="kpil">Update minggu ini</div><div class="kpiv">${wkUpd}/5 hari</div></div>
-        <div class="kpii"><div class="kpil">Streak</div><div class="kpiv">${streak} minggu</div></div>
-        <div class="kpii"><div class="kpil">Brief</div><div class="kpiv">${lastBr}</div></div>
-        <div class="kpii"><div class="kpil">Kehadiran terakhir</div><div class="kpiv">${lastAtt}</div></div>
-        ${lastNote?`<div class="kpii" style="grid-column:1/-1"><div class="kpil">Catatan</div><div class="kpiv" style="font-weight:400;font-size:12px">${lastNote}</div></div>`:''}
-      </div>
-    </div>
-  </div>`;
+// ── BRIEF CONTEXT SECTION (baru) ──
+function buildBriefCtx(mid){
+  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  if(!projs.length)return'';
+  const rows=projs.map(p=>{
+    const done=p.milestones.filter(ms=>ms.status==='hit').length;
+    const total=p.milestones.length;
+    const pct=total?Math.round(done/total*100):0;
+    const nextMs=p.milestones.find(ms=>ms.status!=='hit');
+    const nextTxt=nextMs?`<span style="font-size:11px;color:var(--t3)">next: ${nextMs.name}${nextMs.deadline?' ('+fmtDate(nextMs.deadline)+')':''}</span>`:'<span style="font-size:11px;color:var(--ok)">✓ semua selesai</span>';
+    return`<div class="brief-ctx-row"><div class="brief-ctx-name">${p.name}</div><div class="brief-ctx-prog">${done}/${total}</div></div><div style="margin-bottom:4px;padding-left:0">${nextTxt}</div>`;
+  }).join('');
+  return`<div class="brief-ctx"><div class="brief-ctx-title">Brief aktif</div>${rows}</div>`;
 }
 
+// ── CATATAN HARIAN SECTION (baru) ──
+function buildNotesSection(mid){
+  const e=S.entries[mid]||{};
+  const dates=weekDates();
+  const notes=dates.map(d=>({d,entry:e[d]})).filter(x=>x.entry&&x.entry.note);
+  if(!notes.length)return'';
+  const items=notes.map(({d,entry})=>{
+    const absTxt=entry.att==='n'?`<span class="note-absent">(${entry.absent_reason||'tidak hadir'})</span>`:'';
+    return`<div class="note-item"><div class="note-date">${d.slice(8,10)}/${d.slice(5,7)}</div><div class="note-text">${entry.note}${absTxt}</div></div>`;
+  }).join('');
+  return`<div style="margin-bottom:.875rem"><div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Catatan minggu ini</div><div class="notes-list">${items}</div></div>`;
+}
+
+// ── MEMBER CARD ──
 function buildDots(mid){
   const dates=weekDates(),td=today(),e=S.entries[mid]||{};
-  return`<div class="daygrid">${dates.map((d,i)=>{const ok=e[d]&&e[d].upd==='y',fut=d>td;const cls=ok?'dok':fut?'dft':'dms',sym=ok?'✓':fut?'·':'—';return`<div class="dd ${cls}"><div class="ddl">${DN[i]}</div><div class="dds">${sym}</div></div>`;}).join('')}</div>`;
+  return`<div class="daygrid">${dates.map((d,i)=>{
+    const entry=e[d];
+    const fut=d>td;
+    let cls='dft',sym='·';
+    if(entry){
+      if(entry.att==='n'){cls='dms';sym='✗';}
+      else if(entry.att==='w'){cls='dwfh';sym='WFH';}
+      else if(entry.upd==='y'){cls='dok';sym='✓';}
+      else{cls='dms';sym='—';}
+    } else if(fut){cls='dft';sym='·';}
+    else{cls='dms';sym='—';}
+    return`<div class="dd ${cls}"><div class="ddl">${DN[i]}</div><div class="dds">${sym}</div></div>`;
+  }).join('')}</div>`;
 }
 
 function buildMsSection(mid){
@@ -419,6 +485,50 @@ function buildMsSection(mid){
     }).join('');
     return`<div class="ms-wrap"><div class="ms-proj">${p.name} · ${done}/${p.milestones.length}</div><div class="ms-cols">${items}</div></div>`;
   }).join('');
+}
+
+function memberCard(m){
+  const tier=getTier(m.id),ti=tierInfo(tier);
+  const dr=getDeliveryRate(m.id),ur=getUpdateRate(m.id),streak=getStreak(m.id);
+  const streakHtml=streak>1?`<span class="strk"><b>${streak}</b> mg</span>`:'';
+  const e=S.entries[m.id]||{},days=Object.keys(e).sort();
+  const wkUpd=weekDates().filter(d=>e[d]&&e[d].upd==='y').length;
+  const lastBr=days.length?({g:'Mandiri',m:'Wajar',l:'Sering tanya'}[e[days[days.length-1]]?.br||'m']):'—';
+  const lastAtt=days.length?({h:'Hadir',w:'WFH',n:'Tidak hadir'}[e[days[days.length-1]]?.att||'h']):'—';
+  const lastNote=days.length&&e[days[days.length-1]]?.note;
+  // Attachment count minggu ini (field baru dari bot)
+  const wkAttach=weekDates().reduce((sum,d)=>sum+(e[d]?.attachment_count||0),0);
+  const dotsHtml=buildDots(m.id);
+  const msHtml=buildMsSection(m.id);
+  const briefCtx=buildBriefCtx(m.id);
+  const notesHtml=buildNotesSection(m.id);
+  return`<div class="mc" id="mc-${m.id}">
+    <div class="mch" onclick="toggle('mc-${m.id}')">
+      <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
+      <div class="mi"><div class="mn">${m.name}</div><div class="mr">${m.role}</div></div>
+      ${streakHtml}
+      <span class="drb ${drCls(dr)}" style="margin-right:6px">${dr!==null?dr+'%':'—'}</span>
+      <span class="tier ${ti.c}">${ti.l}</span>
+      <span class="chv">▼</span>
+    </div>
+    <div class="mcd">
+      ${dotsHtml}
+      ${briefCtx}
+      ${msHtml}
+      ${notesHtml}
+      <div class="div"></div>
+      <div class="kpig">
+        <div class="kpii"><div class="kpil">Delivery rate</div><div class="kpiv ${drCol(dr)}">${dr!==null?dr+'%':'—'}</div></div>
+        <div class="kpii"><div class="kpil">Update ${ch(m.lead)} rate</div><div class="kpiv">${ur!==null?ur+'%':'—'}</div></div>
+        <div class="kpii"><div class="kpil">Update minggu ini</div><div class="kpiv">${wkUpd}/5 hari</div></div>
+        <div class="kpii"><div class="kpil">Streak</div><div class="kpiv">${streak} minggu</div></div>
+        <div class="kpii"><div class="kpil">Brief</div><div class="kpiv">${lastBr}</div></div>
+        <div class="kpii"><div class="kpil">Kehadiran terakhir</div><div class="kpiv">${lastAtt}</div></div>
+        ${wkAttach>0?`<div class="kpii"><div class="kpil">File setor minggu ini</div><div class="kpiv">${wkAttach} file</div></div>`:''}
+        ${lastNote?`<div class="kpii" style="grid-column:1/-1"><div class="kpil">Catatan terakhir</div><div class="kpiv" style="font-weight:400;font-size:12px">${lastNote}</div></div>`:''}
+      </div>
+    </div>
+  </div>`;
 }
 
 function teamBody(){
@@ -438,6 +548,7 @@ function renderWeekly(){
   const avgUr=urs.length?Math.round(urs.reduce((a,b)=>a+b)/urs.length):null;
   const below=members.filter(m=>getTier(m.id)==='below').length;
   const ac=curLead==='yogi'?'ay':'ag';
+  // Hero cards
   document.getElementById('wk-heroes').innerHTML=`
     <div class="hero ${ac}"><div class="hero-l">Delivery Rate</div><div class="hero-v ${drCol(avgDr)}">${avgDr!==null?avgDr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
     <div class="hero"><div class="hero-l">Update ${ch(curLead)} Rate</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
@@ -476,6 +587,7 @@ function buildMonthReview(m,month,y){
   const prevTier=getMonthTier(m.id,month-1);
   const tierChg=tier&&prevTier?(TORD[tier]>TORD[prevTier]?'↑':TORD[tier]<TORD[prevTier]?'↓':'→'):'';
   const pos=[],neg=[],act=[];
+
   if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Update ${ch(m.lead)} konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Update ${ch(m.lead)} kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Update ${ch(m.lead)} sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
   if(dr!==null){if(dr>=90)pos.push(`Delivery rate sangat baik — ${dr}% milestone on-time`);else if(dr>=70)neg.push(`Beberapa milestone terlambat — delivery rate ${dr}%`);else neg.push(`Delivery rate kritis — ${dr}%, banyak milestone kelewat`);}
   const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>p.milestones.filter(ms=>ms.status==='late')).map(ms=>ms.name);
@@ -484,13 +596,39 @@ function buildMonthReview(m,month,y){
   if(brC.l>brC.g&&brC.l>=2)neg.push(`Pemahaman brief menurun — ${brC.l} hari sering tanya dasar`);
   else if(brC.g>=days.length*0.6)pos.push(`Pemahaman brief baik — mandiri di ${brC.g}/${days.length} hari`);
   const attH=days.filter(d=>entries[d]?.att==='h').length;
+  const attN=days.filter(d=>entries[d]?.att==='n').length;
   if(days.length&&m.team!=='Font'){const ar=Math.round(attH/days.length*100);if(ar>=80)pos.push(`Kehadiran studio baik — ${attH}/${days.length} hari (${ar}%)`);else if(ar<60)neg.push(`Kehadiran studio rendah — ${attH}/${days.length} hari (${ar}%)`);}
+
+  // Absent reason analysis (field baru)
+  const absentDays=days.filter(d=>entries[d]?.att==='n');
+  const hilang=absentDays.filter(d=>entries[d]?.absent_reason==='hilang').length;
+  const sakit=absentDays.filter(d=>entries[d]?.absent_reason==='sakit').length;
+  if(hilang>=2)neg.push(`Tidak hadir tanpa kabar ${hilang}x — perlu diklarifikasi`);
+  if(sakit>=3)neg.push(`Sakit ${sakit}x bulan ini — perlu diperhatikan`);
+
+  // Catatan harian bulan ini (field baru)
+  const monthNotes=days.filter(d=>entries[d]?.note).map(d=>({d,note:entries[d].note,att:entries[d].att}));
+
   if(lateMs.length)act.push(`Tanya hambatan di: ${lateMs.slice(0,2).join(', ')}`);
   if(ur!==null&&ur<70)act.push(`Ingatkan pentingnya update ${ch(m.lead)} harian sebagai bukti progres`);
   if(brC.l>=2)act.push(`Review apakah brief perlu diperjelas dari sisi CD`);
+  if(hilang>=2)act.push(`Klarifikasi kehadiran — ada ${hilang} hari tidak ada kabar`);
   if(!pos.length&&!neg.length)act.push('Belum ada data cukup untuk bulan ini');
   if(tier==='exceptional')act.push('Pertimbangkan tanggung jawab atau target lebih besar');
+
   const mkItems=(arr,dot)=>arr.map(t=>`<div class="ritem"><span class="rdot ${dot}"></span><span>${t}</span></div>`).join('');
+
+  // Catatan section
+  const notesSection=monthNotes.length?`
+    <div class="rsec">
+      <div class="rsec-t act">Catatan harian bulan ini</div>
+      ${monthNotes.slice(-10).map(({d,note,att})=>`
+        <div class="ritem">
+          <span class="rdot act"></span>
+          <span><span style="font-family:var(--mono);font-size:10px;color:var(--t3)">${fmtDate(d)}</span>${att==='n'?' <span style="color:var(--crit);font-size:10px">[tidak hadir]</span>':''} ${note}</span>
+        </div>`).join('')}
+    </div>`:'';
+
   return`<div class="rcard" id="rc-${m.id}">
     <div class="rch" onclick="toggle('rc-${m.id}')">
       <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
@@ -503,6 +641,7 @@ function buildMonthReview(m,month,y){
       ${pos.length?`<div class="rsec"><div class="rsec-t pos">Yang konsisten</div>${mkItems(pos,'pos')}</div>`:''}
       ${neg.length?`<div class="rsec"><div class="rsec-t neg">Perlu dibahas</div>${mkItems(neg,'neg')}</div>`:''}
       ${act.length?`<div class="rsec"><div class="rsec-t act">Rekomendasi topik 1-on-1</div>${mkItems(act,'act')}</div>`:''}
+      ${notesSection}
     </div>
   </div>`;
 }
@@ -540,177 +679,155 @@ function renderYearly(){
   mkChart('ch-yr',MN,members.map((m,i)=>({label:m.name,data:Array.from({length:12},(_,mo)=>{const pfx=`${y}-${String(mo+1).padStart(2,'0')}`;return Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx)&&(S.entries[m.id]||{})[k]?.upd==='y').length;}),borderColor:colors[i%colors.length],backgroundColor:'transparent',tension:.4,pointRadius:3,spanGaps:true})));
 }
 
-
-
-// ── Input page — tab-based ────────────────────────────────────────
-let curInpMember = null;
-let inpMsChecked = {};
-let fAttL='h', fUpdL='y', fBrL='m';
-
-function renderInput() {
-  const members = S.members.filter(m=>m.lead===curLead);
-  const td = today();
-  document.getElementById('inp-date-label').textContent = formatDisplayDate(td);
-  // Build member tabs
-  const tabsEl = document.getElementById('inp-member-tabs');
-  tabsEl.innerHTML = members.map(m => {
-    const done = !!(S.entries[m.id]&&S.entries[m.id][td]);
-    return `<button
-      id="itab-${m.id}"
-      onclick="selectInpMember('${m.id}')"
+// ── INPUT PAGE ──
+function renderInput(){
+  const members=S.members.filter(m=>m.lead===curLead);
+  const td=today();
+  document.getElementById('inp-date-label').textContent=formatDisplayDate(td);
+  const tabsEl=document.getElementById('inp-member-tabs');
+  tabsEl.innerHTML=members.map(m=>{
+    const done=!!(S.entries[m.id]&&S.entries[m.id][td]);
+    return`<button id="itab-${m.id}" onclick="selectInpMember('${m.id}')"
       style="padding:7px 14px;border-radius:20px;border:1.5px solid ${done?'var(--ok)':'var(--bdrx)'};
-        background:${done?'var(--ok-l)':'var(--surf)'};
-        color:${done?'var(--ok)':'var(--t2)'};
-        font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
+      background:${done?'var(--ok-l)':'var(--surf)'};color:${done?'var(--ok)':'var(--t2)'};
+      font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;font-family:var(--sans)">
       ${m.name}${done?' ✓':''}
     </button>`;
   }).join('');
-  // Select first member or keep current
-  if (!curInpMember || !members.find(m=>m.id===curInpMember)) {
-    curInpMember = members[0]?.id || null;
-  }
-  if (curInpMember) renderInpForm(curInpMember);
+  if(!curInpMember||!members.find(m=>m.id===curInpMember))curInpMember=members[0]?.id||null;
+  if(curInpMember)renderInpForm(curInpMember);
 }
 
-function formatDisplayDate(d) {
-  const days = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-  const dt = new Date(d+'T00:00:00');
-  return `${days[dt.getDay()]} · ${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}`;
-}
-
-function selectInpMember(mid) {
-  curInpMember = mid;
-  inpMsChecked = {};
-  // Update active tab style
-  const members = S.members.filter(m=>m.lead===curLead);
-  const td = today();
-  members.forEach(m => {
-    const btn = document.getElementById('itab-'+m.id);
-    if (!btn) return;
-    const done = !!(S.entries[m.id]&&S.entries[m.id][td]);
-    const active = m.id === mid;
-    btn.style.borderColor = active ? 'var(--tx)' : (done?'var(--ok)':'var(--bdrx)');
-    btn.style.background = active ? 'var(--tx)' : (done?'var(--ok-l)':'var(--surf)');
-    btn.style.color = active ? '#fff' : (done?'var(--ok)':'var(--t2)');
+function selectInpMember(mid){
+  curInpMember=mid;inpMsChecked={};
+  const members=S.members.filter(m=>m.lead===curLead);
+  const td=today();
+  members.forEach(m=>{
+    const btn=document.getElementById('itab-'+m.id);if(!btn)return;
+    const done=!!(S.entries[m.id]&&S.entries[m.id][td]);
+    const active=m.id===mid;
+    btn.style.borderColor=active?'var(--tx)':(done?'var(--ok)':'var(--bdrx)');
+    btn.style.background=active?'var(--tx)':(done?'var(--ok-l)':'var(--surf)');
+    btn.style.color=active?'#fff':(done?'var(--ok)':'var(--t2)');
   });
   renderInpForm(mid);
 }
 
-function renderInpForm(mid) {
-  const m = S.members.find(x=>x.id===mid); if(!m) return;
-  const td = today();
-  const existing = (S.entries[mid]||{})[td];
-  // Pre-fill from existing entry or defaults
-  fAttL = existing?.att || 'h';
-  fUpdL = existing?.upd || 'y';
-  fBrL  = existing?.br  || 'm';
-  const note = existing?.note || '';
-  const channel = ch(m.lead);
-  // Build all projects milestones for this member
-  const projs = S.projects.filter(p=>p.assignee===mid&&p.active);
-  const projHtml = projs.length ? projs.map(p => {
-    const items = p.milestones.map((ms,i) => {
-      const st = ms.status;
-      const rc = st==='hit'?'done':st?'late':'';
-      const cc = st==='hit'?'done':st?'late':'';
-      return `<div class="msr ${rc}" id="ims-${p.id}-${i}" onclick="toggleInpMsNew('${p.id}',${i})">
+function renderInpForm(mid){
+  const m=S.members.find(x=>x.id===mid);if(!m)return;
+  const td=today();
+  const existing=(S.entries[mid]||{})[td];
+  fAttL=existing?.att||'h';
+  fUpdL=existing?.upd||'y';
+  fBrL=existing?.br||'m';
+  fAbsReason=existing?.absent_reason||'';
+  const note=existing?.note||'';
+  const channel=ch(m.lead);
+  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  const projHtml=projs.length?projs.map(p=>{
+    const items=p.milestones.map((ms,i)=>{
+      const st=ms.status;
+      const rc=st==='hit'?'done':st?'late':'';
+      const cc=st==='hit'?'done':st?'late':'';
+      return`<div class="msr ${rc}" id="ims-${p.id}-${i}" onclick="toggleInpMsNew('${p.id}',${i})">
         <div class="mschk ${cc}" id="imc-${p.id}-${i}">${st==='hit'?'✓':st?'!':''}</div>
-        <div style="flex:1;min-width:0">
-          <div class="msn">${ms.name}</div>
-          <div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div>
-        </div>
+        <div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div>
       </div>`;
     }).join('');
-    return `<div style="margin-bottom:.875rem">
-      <div class="ms-proj">${p.name}</div>
-      <div class="ms-cols">${items}</div>
-    </div>`;
-  }).join('') : `<div style="font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:.875rem">Belum ada project aktif</div>`;
+    return`<div style="margin-bottom:.875rem"><div class="ms-proj">${p.name}</div><div class="ms-cols">${items}</div></div>`;
+  }).join(''):`<div style="font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:.875rem">Belum ada project aktif</div>`;
 
-  const attOpts = [['h','Hadir'],['w','WFH'],['n','Tidak hadir']];
-  const updOpts = [['y','Ya'],['n','Tidak']];
-  const brOpts  = [['g','Mandiri'],['m','Wajar'],['l','Sering tanya dasar']];
-  const mkOpts = (type, opts, cur) => opts.map(([v,l])=>
-    `<button class="opt${v===cur?' on':''}" id="fi-${type}-${v}" onclick="setFL('${type}','${v}')">${l}</button>`
-  ).join('');
+  const mkOpts=(type,opts,cur)=>opts.map(([v,l])=>`<button class="opt${v===cur?' on':''}" id="fi-${type}-${v}" onclick="setFL('${type}','${v}')">${l}</button>`).join('');
 
-  document.getElementById('inp-form-wrap').innerHTML = `
+  // Absent reason section — muncul hanya kalau att=n
+  const absReasonHtml=`<div class="frow" id="abs-reason-row" style="display:${fAttL==='n'?'block':'none'}">
+    <label class="flbl">Alasan tidak hadir</label>
+    <div class="opts">
+      <button class="opt${fAbsReason==='sakit'?' on':''}" id="fi-abs-sakit" onclick="setAbsReason('sakit')">Sakit</button>
+      <button class="opt${fAbsReason==='izin'?' on':''}" id="fi-abs-izin" onclick="setAbsReason('izin')">Izin</button>
+      <button class="opt${fAbsReason==='hilang'?' on':''}" id="fi-abs-hilang" onclick="setAbsReason('hilang')">Tidak ada kabar</button>
+      <button class="opt${fAbsReason==='lainnya'?' on':''}" id="fi-abs-lainnya" onclick="setAbsReason('lainnya')">Lainnya</button>
+    </div>
+  </div>`;
+
+  document.getElementById('inp-form-wrap').innerHTML=`
     <div class="fcard">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding-bottom:.875rem;border-bottom:1px solid var(--bdr)">
-        <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
-        <div>
-          <div style="font-size:13px;font-weight:500">${m.name}</div>
-          <div style="font-size:11px;color:var(--t3)">${m.team} · Update via ${channel}</div>
-        </div>
-        ${existing?`<span style="margin-left:auto;font-size:11px;font-family:var(--mono);background:var(--ok-l);color:var(--ok);padding:2px 8px;border-radius:3px">sudah diisi ✓</span>`:''}
+      <div class="ftitle">${m.name} <span style="color:var(--t3);font-weight:400;font-size:12px">· ${m.role}</span></div>
+      <div class="frow"><label class="flbl">Milestone selesai hari ini</label>${projHtml}</div>
+      <div class="frow"><label class="flbl">Hadir di studio</label>
+        <div class="opts">${mkOpts('att',[['h','Hadir'],['w','WFH'],['n','Tidak hadir']],fAttL)}</div>
       </div>
-      <div class="frow">
-        <div style="font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;color:var(--t3);margin-bottom:8px">Milestone selesai hari ini</div>
-        ${projHtml}
+      ${absReasonHtml}
+      <div class="frow"><label class="flbl">Setor update ${channel}</label>
+        <div class="opts">${mkOpts('upd',[['y','Ya'],['n','Tidak']],fUpdL)}</div>
       </div>
-      <div class="frow">
-        <label class="flbl">Hadir di studio</label>
-        <div class="opts">${mkOpts('att',attOpts,fAttL)}</div>
+      <div class="frow"><label class="flbl">Pemahaman brief</label>
+        <div class="opts">${mkOpts('br',[['g','Mandiri'],['m','Wajar'],['l','Sering tanya dasar']],fBrL)}</div>
       </div>
-      <div class="frow">
-        <label class="flbl">Setor update ${channel}</label>
-        <div class="opts">${mkOpts('upd',updOpts,fUpdL)}</div>
-      </div>
-      <div class="frow">
-        <label class="flbl">Pemahaman brief</label>
-        <div class="opts">${mkOpts('br',brOpts,fBrL)}</div>
-      </div>
-      <div class="frow">
-        <label class="flbl">Catatan</label>
+      <div class="frow"><label class="flbl">Catatan</label>
         <input type="text" class="fc" id="inp-note-f" placeholder="Hambatan, progres, dll" value="${note}">
       </div>
       <button class="sbtn" onclick="saveEntryNew()">Simpan ${m.name}</button>
     </div>`;
 }
 
-function setFL(type, val) {
-  const maps = {
-    att: ['h','w','n'],
-    upd: ['y','n'],
-    br:  ['g','m','l'],
-  };
-  maps[type].forEach(v => document.getElementById(`fi-${type}-${v}`)?.classList.remove('on'));
+function setFL(type,val){
+  const maps={att:['h','w','n'],upd:['y','n'],br:['g','m','l']};
+  maps[type].forEach(v=>document.getElementById(`fi-${type}-${v}`)?.classList.remove('on'));
   document.getElementById(`fi-${type}-${val}`)?.classList.add('on');
-  if(type==='att') fAttL=val;
-  if(type==='upd') fUpdL=val;
-  if(type==='br')  fBrL=val;
-}
-
-function toggleInpMsNew(pid, idx) {
-  const key = `${pid}-${idx}`;
-  inpMsChecked[key] = !inpMsChecked[key];
-  const p = S.projects.find(x=>x.id===pid); if(!p) return;
-  const ms = p.milestones[idx];
-  const td = today();
-  if (inpMsChecked[key]) {
-    ms.status = !ms.deadline ? 'hit' : (ms.deadline >= td ? 'hit' : 'late');
-  } else {
-    ms.status = null;
+  if(type==='att'){
+    fAttL=val;
+    // Tampilkan/sembunyikan absent reason
+    const row=document.getElementById('abs-reason-row');
+    if(row)row.style.display=val==='n'?'block':'none';
   }
-  const c = document.getElementById(`imc-${pid}-${idx}`);
-  const r = document.getElementById(`ims-${pid}-${idx}`);
-  if (c) { c.className = `mschk${ms.status==='hit'?' done':ms.status?' late':''}`; c.textContent = ms.status==='hit'?'✓':ms.status?'!':''; }
-  if (r) { r.className = `msr${ms.status==='hit'?' done':ms.status?' late':''}`; }
+  if(type==='upd')fUpdL=val;
+  if(type==='br')fBrL=val;
 }
 
-function saveEntryNew() {
-  const mid = curInpMember; if(!mid) return;
-  const td = today();
-  const note = document.getElementById('inp-note-f')?.value.trim()||'';
-  if(!S.entries[mid]) S.entries[mid]={};
-  S.entries[mid][td] = {att:fAttL, upd:fUpdL, br:fBrL, note};
+function setAbsReason(val){
+  fAbsReason=val;
+  ['sakit','izin','hilang','lainnya'].forEach(v=>{
+    document.getElementById(`fi-abs-${v}`)?.classList.remove('on');
+  });
+  document.getElementById(`fi-abs-${val}`)?.classList.add('on');
+}
+
+function toggleInpMsNew(pid,idx){
+  const key=`${pid}-${idx}`;
+  inpMsChecked[key]=!inpMsChecked[key];
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  const ms=p.milestones[idx];
+  const td=today();
+  if(inpMsChecked[key])ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');
+  else ms.status=null;
+  const c=document.getElementById(`imc-${pid}-${idx}`);
+  const r=document.getElementById(`ims-${pid}-${idx}`);
+  if(c){c.className=`mschk${ms.status==='hit'?' done':ms.status?' late':''}`;c.textContent=ms.status==='hit'?'✓':ms.status?'!':'';}
+  if(r){r.className=`msr${ms.status==='hit'?' done':ms.status?' late':''}`;}
+}
+
+function saveEntryNew(){
+  const mid=curInpMember;if(!mid)return;
+  const td=today();
+  const note=document.getElementById('inp-note-f')?.value.trim()||'';
+  if(!S.entries[mid])S.entries[mid]={};
+  // Simpan dengan field baru
+  const entry={att:fAttL,upd:fUpdL,br:fBrL,note};
+  if(fAttL==='n'&&fAbsReason)entry.absent_reason=fAbsReason;
+  // Preserve field otomatis dari bot jika ada
+  const existing=S.entries[mid][td];
+  if(existing?.milestones_done)entry.milestones_done=existing.milestones_done;
+  if(existing?.projects_active)entry.projects_active=existing.projects_active;
+  if(existing?.attachment_count)entry.attachment_count=existing.attachment_count;
+  S.entries[mid][td]=entry;
   save();
-  const m = S.members.find(x=>x.id===mid);
+  const m=S.members.find(x=>x.id===mid);
   showToast(`Tersimpan · ${m?.name} · ${td}`);
-  // Re-render tabs to show green checkmark
   renderInput();
 }
 
+// ── PROJECTS ──
 function renderProjects(){
   const members=S.members.filter(m=>m.lead===curLead);
   const active=S.projects.filter(p=>p.active&&members.some(m=>m.id===p.assignee));
@@ -725,10 +842,7 @@ function renderProjects(){
   buildTplGrid();
 }
 
-function buildTplGrid(){
-  document.getElementById('tpl-grid').innerHTML=Object.entries(TEMPLATES).map(([name,tpl])=>`<div class="tc${selTpl===name?' on':''}" onclick="selectTpl('${name}')"><div class="tt">${name}</div><div class="ts2">${tpl.split('\n').length} milestone</div></div>`).join('');
-}
-
+function buildTplGrid(){document.getElementById('tpl-grid').innerHTML=Object.entries(TEMPLATES).map(([name,tpl])=>`<div class="tc${selTpl===name?' on':''}" onclick="selectTpl('${name}')"><div class="tt">${name}</div><div class="ts2">${tpl.split('\n').length} milestone</div></div>`).join('');}
 function selectTpl(name){selTpl=name;buildTplGrid();document.getElementById('np-ms').value=fillTpl(TEMPLATES[name]);}
 function onNpAssign(){if(selTpl)selectTpl(selTpl);}
 
@@ -743,29 +857,15 @@ function createProject(){
   showToast('Project dibuat — '+name);renderProjects();
 }
 
-function toggleProjMs(pid,idx){
-  const p=S.projects.find(x=>x.id===pid);if(!p)return;
-  const ms=p.milestones[idx],td=today();
-  if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');
-  else ms.status=null;
-  save();renderProjects();
-}
-
-function toggleMs(pid,idx){
-  const p=S.projects.find(x=>x.id===pid);if(!p)return;
-  const ms=p.milestones[idx],td=today();
-  if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');
-  else ms.status=null;
-  save();renderPage(curPage);
-}
-
+function toggleProjMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');else ms.status=null;save();renderProjects();}
+function toggleMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');else ms.status=null;save();renderPage(curPage);}
 function closeProj(pid){const p=S.projects.find(x=>x.id===pid);if(p)p.active=false;save();renderProjects();}
 
+// ── SETTINGS ──
 function renderSettings(){
   const members=S.members.filter(m=>m.lead===curLead);
   document.getElementById('set-list').innerHTML=members.length?members.map(m=>`<div class="smr"><div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div><div style="flex:1"><div style="font-size:13px;font-weight:500">${m.name}</div><div style="font-size:11px;color:var(--t3)">${m.team} · ${m.role}</div></div><button style="font-size:11px;font-family:var(--mono);padding:4px 9px;border-radius:4px;border:1px solid var(--bdr);background:none;cursor:pointer;color:var(--crit)" onclick="removeMember('${m.id}')">Hapus</button></div>`).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0">Belum ada anggota</div>`;
 }
-
 function addMember(){
   const name=document.getElementById('sn-n').value.trim();
   const team=document.getElementById('sn-t').value;
@@ -776,34 +876,32 @@ function addMember(){
   document.getElementById('sn-n').value='';document.getElementById('sn-r').value='';
   showToast('Ditambah — '+name);
 }
-
 function removeMember(id){const m=S.members.find(x=>x.id===id);S.members=S.members.filter(x=>x.id!==id);save();renderSettings();showToast('Dihapus — '+(m?.name||''));}
 
+// ── NAV ──
 function goPage(p,btn){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.si').forEach(x=>x.classList.remove('on','ay','ag'));
   document.getElementById('page-'+p)?.classList.add('on');
   btn.classList.add('on',curLead==='yogi'?'ay':'ag');
   curPage=p;window._curPage=p;renderPage(p);
+  closeSidebar();
 }
 function renderPage(p){const fn={weekly:renderWeekly,monthly:renderMonthly,yearly:renderYearly,input:renderInput,projects:renderProjects,settings:renderSettings};fn[p]?.();}
 window.renderPage=renderPage;
 function setLead(lead,btn){curLead=lead;document.querySelectorAll('.ltab').forEach(x=>x.classList.remove('on'));btn.classList.add('on');document.querySelectorAll('.si.on').forEach(x=>{x.classList.remove('ay','ag');x.classList.add(lead==='yogi'?'ay':'ag');});renderPage(curPage);}
 function toggle(id){document.getElementById(id)?.classList.toggle('open');}
 
-
+// ── CHART ──
 function mkChart(id,labels,datasets){
   const c=document.getElementById(id);if(!c)return;
   if(charts[id])charts[id].destroy();
   charts[id]=new Chart(c,{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:8,padding:10,font:{size:11},color:'#A4A29A'}}},scales:{y:{min:0,grid:{color:'rgba(0,0,0,0.04)'},ticks:{font:{size:11},color:'#A4A29A'}},x:{grid:{display:false},ticks:{font:{size:11},color:'#A4A29A'}}}}});
 }
-
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
 document.getElementById('wkbadge').textContent=weekRange();
-// Initial render with default data while waiting for Firebase
 renderWeekly();
-// Fallback: hide loading after 5s even if Firebase is slow
 setTimeout(()=>{const ov=document.getElementById('fb-loading');if(ov)ov.style.display='none';},5000);
 </script>
 </body>
