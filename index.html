@@ -189,7 +189,35 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
 .chwrap{position:relative;height:155px;margin:1rem 0}
 .smr{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;margin-bottom:8px}
 
-/* ── TOAST ── */
+/* ── OVERDUE FLAG ── */
+.msr.overdue{background:#FFF3E0;border-color:#FFB74D}
+.mschk.overdue{background:#FF6F00;border-color:#FF6F00;color:#fff}
+.ms-overdue-badge{font-family:var(--mono);font-size:9px;font-weight:500;color:#FF6F00;background:#FFF3E0;border:1px solid #FFB74D;border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:4px}
+.ms-ontime-badge{font-family:var(--mono);font-size:9px;color:var(--ok);background:var(--ok-l);border:1px solid var(--ok-b);border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:4px}
+.ms-late-badge{font-family:var(--mono);font-size:9px;color:var(--crit);background:var(--crit-l);border:1px solid var(--crit-b);border-radius:3px;padding:1px 5px;white-space:nowrap;margin-left:4px}
+
+/* ── IDLE FLAG ── */
+.idle-flag{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--warn);background:var(--warn-l);border:1px solid var(--warn-b);border-radius:4px;padding:2px 7px;margin-bottom:.625rem}
+
+/* ── VELOCITY ── */
+.vel-row{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--bdr);font-size:12px}
+.vel-row:last-child{border-bottom:none}
+.vel-name{flex:1;color:var(--t2)}
+.vel-badge{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px}
+.vel-ok{background:var(--ok-l);color:var(--ok)}.vel-late{background:var(--crit-l);color:var(--crit)}.vel-neu{background:var(--neu-l);color:var(--neu)}
+
+/* ── REVISI COUNT ── */
+.rev-badge{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;background:var(--warn-l);color:var(--warn);border:1px solid var(--warn-b)}
+
+/* ── BRIEF PER ORANG ── */
+.brief-rating-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdr);font-size:12px}
+.brief-rating-row:last-child{border-bottom:none}
+.brief-rating-name{flex:1;color:var(--t2);font-weight:500}
+.br-badge{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px}
+.br-g{background:var(--ok-l);color:var(--ok)}.br-m{background:var(--neu-l);color:var(--neu)}.br-l{background:var(--crit-l);color:var(--crit)}
+
+/* ── SETORAN LABEL ── */
+.setoran-label{font-size:10px;color:var(--t3);font-family:var(--mono)}
 .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--tx);color:#fff;font-family:var(--mono);font-size:12px;padding:8px 14px;border-radius:6px;opacity:0;transform:translateY(6px);transition:all .2s;pointer-events:none;z-index:999}
 .toast.show{opacity:1;transform:translateY(0)}
 
@@ -477,14 +505,134 @@ function buildDots(mid){
 function buildMsSection(mid){
   const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
   if(!projs.length)return`<div style="font-size:12px;color:var(--t3);margin-bottom:.875rem;font-family:var(--mono)">Belum ada project aktif</div>`;
+  const todayStr=today();
   return projs.map(p=>{
     const done=p.milestones.filter(ms=>ms.status==='hit').length;
+    // Revisi count dari data Firebase kalau ada
+    const revisi=p.revisi_count||0;
+    const revBadge=revisi>0?`<span class="rev-badge">${revisi}x revisi</span>`:'';
     const items=p.milestones.map((ms,i)=>{
-      const st=ms.status,rc=st==='hit'?'done':st?'late':'',cc=st==='hit'?'done':st?'late':'',sym=st==='hit'?'✓':st?'!':'';
-      return`<div class="msr ${rc}" onclick="toggleMs('${p.id}',${i})"><div class="mschk ${cc}">${sym}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div></div>`;
+      const st=ms.status;
+      const isOverdue=!st&&ms.deadline&&ms.deadline<todayStr;
+      const daysDiff=ms.days_diff;
+      let rc='',cc='',sym='';
+      let badge='';
+      if(st==='hit'){
+        rc='done';cc='done';sym='✓';
+        if(ms.on_time===true) badge=`<span class="ms-ontime-badge">on time</span>`;
+        else if(ms.on_time===false){
+          const d=Math.abs(daysDiff||0);
+          badge=`<span class="ms-late-badge">+${d}h</span>`;
+        }
+      } else if(isOverdue){
+        rc='overdue';cc='overdue';sym='!';
+        const d=Math.round((new Date(todayStr)-new Date(ms.deadline))/(1000*60*60*24));
+        badge=`<span class="ms-overdue-badge">overdue ${d}h</span>`;
+      }
+      return`<div class="msr ${rc}" onclick="toggleMs('${p.id}',${i})">
+        <div class="mschk ${cc}">${sym}</div>
+        <div style="flex:1;min-width:0">
+          <div class="msn" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">${ms.name}${badge}</div>
+          <div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}${ms.completed_date?` · selesai ${fmtDate(ms.completed_date)}`:''}</div>
+        </div>
+      </div>`;
     }).join('');
-    return`<div class="ms-wrap"><div class="ms-proj">${p.name} · ${done}/${p.milestones.length}</div><div class="ms-cols">${items}</div></div>`;
+    return`<div class="ms-wrap">
+      <div class="ms-proj" style="display:flex;align-items:center;gap:6px">${p.name} · ${done}/${p.milestones.length}${revBadge}</div>
+      <div class="ms-cols">${items}
+    </div></div>`;
   }).join('');
+}
+
+// ── VELOCITY ──
+function buildVelocitySection(mid){
+  const projs=S.projects.filter(p=>p.assignee===mid);
+  const hitMs=projs.flatMap(p=>p.milestones.filter(ms=>ms.status==='hit'&&ms.on_time!==null&&ms.on_time!==undefined));
+  if(!hitMs.length)return'';
+  const ontime=hitMs.filter(ms=>ms.on_time===true).length;
+  const late=hitMs.filter(ms=>ms.on_time===false).length;
+  const pct=Math.round(ontime/hitMs.length*100);
+  const cls=pct>=80?'vel-ok':pct>=50?'vel-late':'vel-late';
+  return`<div style="margin-bottom:.875rem">
+    <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Velocity</div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span class="vel-badge ${cls}">${pct}% on time</span>
+      <span style="color:var(--t3);font-family:var(--mono);font-size:11px">${ontime}/${hitMs.length} milestone tepat waktu</span>
+      ${late>0?`<span style="color:var(--crit);font-family:var(--mono);font-size:11px">${late} terlambat</span>`:''}
+    </div>
+  </div>`;
+}
+
+// ── IDLE FLAG ──
+function getIdleDays(mid){
+  const e=S.entries[mid]||{};
+  const todayStr=today();
+  // Cek dari entry terakhir upd=y
+  const days=Object.keys(e).sort().reverse();
+  for(const d of days){
+    if(e[d]&&e[d].upd==='y'){
+      const diff=Math.round((new Date(todayStr)-new Date(d))/(1000*60*60*24));
+      return diff;
+    }
+  }
+  return null;
+}
+
+function buildIdleFlag(mid){
+  const days=getIdleDays(mid);
+  if(days===null||days<3)return'';
+  const label=days>=5?'⚠️ Idle lama':'💤 Belum ada setoran';
+  return`<div class="idle-flag">${label} — ${days} hari tidak ada file</div>`;
+}
+
+// ── BRIEF RATING PER BRIEF ──
+function buildBriefRatingSection(mid){
+  const e=S.entries[mid]||{};
+  const dates=weekDates();
+  // Kumpulkan br per brief dari entries minggu ini
+  const briefRatings={};
+  dates.forEach(d=>{
+    const entry=e[d];
+    if(!entry)return;
+    // br bisa berupa object {brief_id: rating} atau string (lama)
+    if(entry.br&&typeof entry.br==='object'){
+      Object.entries(entry.br).forEach(([bid,val])=>{
+        if(!briefRatings[bid])briefRatings[bid]=[];
+        briefRatings[bid].push(val);
+      });
+    }
+  });
+  // Kalau tidak ada br per brief, fallback ke br lama
+  if(!Object.keys(briefRatings).length){
+    const lastDay=dates.filter(d=>e[d]&&e[d].br).pop();
+    if(!lastDay)return'';
+    const br=e[lastDay].br;
+    if(typeof br==='string'){
+      const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+      if(!projs.length)return'';
+      const label={g:'Mandiri',m:'Wajar',l:'Sering tanya'}[br]||'—';
+      const cls={g:'br-g',m:'br-m',l:'br-l'}[br]||'br-m';
+      return`<div style="margin-bottom:.875rem">
+        <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Pemahaman brief</div>
+        ${projs.map(p=>`<div class="brief-rating-row"><span class="brief-rating-name">${p.name}</span><span class="br-badge ${cls}">${label}</span></div>`).join('')}
+      </div>`;
+    }
+    return'';
+  }
+  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  const rows=Object.entries(briefRatings).map(([bid,vals])=>{
+    const proj=projs.find(p=>p.id===bid)||{name:bid};
+    // Ambil rating terakhir
+    const br=vals[vals.length-1];
+    const label={g:'Mandiri',m:'Wajar',l:'Sering tanya'}[br]||'—';
+    const cls={g:'br-g',m:'br-m',l:'br-l'}[br]||'br-m';
+    return`<div class="brief-rating-row"><span class="brief-rating-name">${proj.name}</span><span class="br-badge ${cls}">${label}</span></div>`;
+  }).join('');
+  if(!rows)return'';
+  return`<div style="margin-bottom:.875rem">
+    <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:6px">Pemahaman brief</div>
+    ${rows}
+  </div>`;
 }
 
 function memberCard(m){
@@ -493,15 +641,18 @@ function memberCard(m){
   const streakHtml=streak>1?`<span class="strk"><b>${streak}</b> mg</span>`:'';
   const e=S.entries[m.id]||{},days=Object.keys(e).sort();
   const wkUpd=weekDates().filter(d=>e[d]&&e[d].upd==='y').length;
-  const lastBr=days.length?({g:'Mandiri',m:'Wajar',l:'Sering tanya'}[e[days[days.length-1]]?.br||'m']):'—';
   const lastAtt=days.length?({h:'Hadir',w:'WFH',n:'Tidak hadir'}[e[days[days.length-1]]?.att||'h']):'—';
   const lastNote=days.length&&e[days[days.length-1]]?.note;
-  // Attachment count minggu ini (field baru dari bot)
   const wkAttach=weekDates().reduce((sum,d)=>sum+(e[d]?.attachment_count||0),0);
+
   const dotsHtml=buildDots(m.id);
-  const msHtml=buildMsSection(m.id);
+  const idleFlag=buildIdleFlag(m.id);
   const briefCtx=buildBriefCtx(m.id);
+  const msHtml=buildMsSection(m.id);
+  const velHtml=buildVelocitySection(m.id);
+  const briefRatingHtml=buildBriefRatingSection(m.id);
   const notesHtml=buildNotesSection(m.id);
+
   return`<div class="mc" id="mc-${m.id}">
     <div class="mch" onclick="toggle('mc-${m.id}')">
       <div class="av ${m.av}">${m.name.slice(0,2).toUpperCase()}</div>
@@ -513,16 +664,18 @@ function memberCard(m){
     </div>
     <div class="mcd">
       ${dotsHtml}
+      ${idleFlag}
       ${briefCtx}
       ${msHtml}
+      ${velHtml}
+      ${briefRatingHtml}
       ${notesHtml}
       <div class="div"></div>
       <div class="kpig">
         <div class="kpii"><div class="kpil">Delivery rate</div><div class="kpiv ${drCol(dr)}">${dr!==null?dr+'%':'—'}</div></div>
-        <div class="kpii"><div class="kpil">Update ${ch(m.lead)} rate</div><div class="kpiv">${ur!==null?ur+'%':'—'}</div></div>
-        <div class="kpii"><div class="kpil">Update minggu ini</div><div class="kpiv">${wkUpd}/5 hari</div></div>
+        <div class="kpii"><div class="kpil">Setoran harian rate</div><div class="kpiv">${ur!==null?ur+'%':'—'}</div></div>
+        <div class="kpii"><div class="kpil">Setoran minggu ini</div><div class="kpiv">${wkUpd}/5 hari</div></div>
         <div class="kpii"><div class="kpil">Streak</div><div class="kpiv">${streak} minggu</div></div>
-        <div class="kpii"><div class="kpil">Brief</div><div class="kpiv">${lastBr}</div></div>
         <div class="kpii"><div class="kpil">Kehadiran terakhir</div><div class="kpiv">${lastAtt}</div></div>
         ${wkAttach>0?`<div class="kpii"><div class="kpil">File setor minggu ini</div><div class="kpiv">${wkAttach} file</div></div>`:''}
         ${lastNote?`<div class="kpii" style="grid-column:1/-1"><div class="kpil">Catatan terakhir</div><div class="kpiv" style="font-weight:400;font-size:12px">${lastNote}</div></div>`:''}
@@ -551,7 +704,7 @@ function renderWeekly(){
   // Hero cards
   document.getElementById('wk-heroes').innerHTML=`
     <div class="hero ${ac}"><div class="hero-l">Delivery Rate</div><div class="hero-v ${drCol(avgDr)}">${avgDr!==null?avgDr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
-    <div class="hero"><div class="hero-l">Update ${ch(curLead)} Rate</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
+    <div class="hero"><div class="hero-l">Setoran Harian Rate</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
     <div class="hero"><div class="hero-l">At Risk</div><div class="hero-v ${below>0?'c-crit':'c-ok'}">${below}</div><div class="hero-s">anggota Below tier</div></div>`;
   document.getElementById('wk-body').innerHTML=teamBody();
 }
@@ -573,7 +726,7 @@ function renderMonthly(){
   const avgUr=allUrs.length?Math.round(allUrs.reduce((a,b)=>a+b)/allUrs.length):null;
   document.getElementById('mo-heroes').innerHTML=`
     <div class="hero"><div class="hero-l">Delivery Rate ${MN[curMonth]}</div><div class="hero-v ${drCol(avgDr)}">${avgDr!==null?avgDr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>
-    <div class="hero"><div class="hero-l">Update Rate ${MN[curMonth]}</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>`;
+    <div class="hero"><div class="hero-l">Setoran Harian Rate ${MN[curMonth]}</div><div class="hero-v">${avgUr!==null?avgUr+'%':'—'}</div><div class="hero-s">rata-rata tim</div></div>`;
   document.getElementById('mo-body').innerHTML=members.map(m=>buildMonthReview(m,curMonth,y)).join('');
 }
 
@@ -588,7 +741,7 @@ function buildMonthReview(m,month,y){
   const tierChg=tier&&prevTier?(TORD[tier]>TORD[prevTier]?'↑':TORD[tier]<TORD[prevTier]?'↓':'→'):'';
   const pos=[],neg=[],act=[];
 
-  if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Update ${ch(m.lead)} konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Update ${ch(m.lead)} kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Update ${ch(m.lead)} sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
+  if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Setoran harian konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Setoran harian kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Setoran harian sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
   if(dr!==null){if(dr>=90)pos.push(`Delivery rate sangat baik — ${dr}% milestone on-time`);else if(dr>=70)neg.push(`Beberapa milestone terlambat — delivery rate ${dr}%`);else neg.push(`Delivery rate kritis — ${dr}%, banyak milestone kelewat`);}
   const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>p.milestones.filter(ms=>ms.status==='late')).map(ms=>ms.name);
   if(lateMs.length)neg.push(`Milestone terlambat: ${lateMs.slice(0,3).join(', ')}${lateMs.length>3?` (+${lateMs.length-3} lainnya)`:''}`);
