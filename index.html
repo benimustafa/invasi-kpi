@@ -351,9 +351,9 @@ window._fbSave=function(data){set(dbRef,data).catch(e=>console.error('Firebase s
 onValue(dbRef,(snapshot)=>{
   const val=snapshot.val();
   if(val){
-    if(val.members)S.members=val.members;
+    if(val.members)S.members=Array.isArray(val.members)?val.members:Object.values(val.members);
     if(val.entries)S.entries=val.entries;
-    if(val.projects)S.projects=val.projects;
+    if(val.projects)S.projects=Array.isArray(val.projects)?val.projects:Object.values(val.projects);
     try{renderPage(window._curPage||'weekly');}catch(e){}
   }
   const ov=document.getElementById('fb-loading');
@@ -411,7 +411,7 @@ function closeSidebar(){
 // ── METRICS ──
 function getDeliveryRate(mid){
   const projs=S.projects.filter(p=>p.assignee===mid);
-  const due=projs.flatMap(p=>p.milestones.filter(ms=>(ms.due||ms.deadline)&&(ms.due||ms.deadline)<=today()));
+  const due=projs.flatMap(p=>(p.milestones||[]).filter(ms=>(ms.due||ms.deadline)&&(ms.due||ms.deadline)<=today()));
   if(!due.length)return null;
   return Math.round(due.filter(ms=>ms.status==='hit').length/due.length*100);
 }
@@ -439,7 +439,7 @@ function getMonthTier(mid,month){
     const filled=dates.map(d=>e[d]).filter(Boolean);
     if(!filled.length)continue;
     const projs=S.projects.filter(p=>p.assignee===mid);
-    const wkDue=projs.flatMap(p=>p.milestones.filter(ms=>{const _d=ms.due||ms.deadline;return _d&&_d>=dates[0]&&_d<=dates[4];}));
+    const wkDue=projs.flatMap(p=>(p.milestones||[]).filter(ms=>{const _d=ms.due||ms.deadline;return _d&&_d>=dates[0]&&_d<=dates[4];}));
     const dr=wkDue.length?wkDue.filter(ms=>ms.status==='hit').length/wkDue.length*100:85;
     const ur=filled.filter(e=>e.upd==='y').length/5*100;
     if(dr>=90&&ur>=90)scores.push(4);
@@ -458,13 +458,13 @@ function drCol(v){if(v===null)return'c-neu';if(v>=90)return'c-ok';if(v>=70)retur
 
 // ── BRIEF CONTEXT SECTION (baru) ──
 function buildBriefCtx(mid){
-  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   if(!projs.length)return'';
   const rows=projs.map(p=>{
-    const done=p.milestones.filter(ms=>ms.status==='hit').length;
-    const total=p.milestones.length;
+    const done=(p.milestones||[]).filter(ms=>ms.status==='hit').length;
+    const total=(p.milestones||[]).length;
     const pct=total?Math.round(done/total*100):0;
-    const nextMs=p.milestones.find(ms=>ms.status!=='hit');
+    const nextMs=(p.milestones||[]).find(ms=>ms.status!=='hit');
     const nextTxt=nextMs?`<span style="font-size:11px;color:var(--t3)">next: ${nextMs.name}${(nextMs.due||nextMs.deadline)?' ('+fmtDate(nextMs.due||nextMs.deadline)+')':''}</span>`:'<span style="font-size:11px;color:var(--ok)">✓ semua selesai</span>';
     return`<div class="brief-ctx-row"><div class="brief-ctx-name">${p.name}</div><div class="brief-ctx-prog">${done}/${total}</div></div><div style="margin-bottom:4px;padding-left:0">${nextTxt}</div>`;
   }).join('');
@@ -503,15 +503,15 @@ function buildDots(mid){
 }
 
 function buildMsSection(mid){
-  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   if(!projs.length)return`<div style="font-size:12px;color:var(--t3);margin-bottom:.875rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const todayStr=today();
   return projs.map(p=>{
-    const done=p.milestones.filter(ms=>ms.status==='hit').length;
+    const done=(p.milestones||[]).filter(ms=>ms.status==='hit').length;
     // Revisi count dari data Firebase kalau ada
     const revisi=p.revisi_count||0;
     const revBadge=revisi>0?`<span class="rev-badge">${revisi}x revisi</span>`:'';
-    const items=p.milestones.map((ms,i)=>{
+    const items=(p.milestones||[]).map((ms,i)=>{
       const st=ms.status;
       const isOverdue=!st&&(ms.due||ms.deadline)&&(ms.due||ms.deadline)<todayStr;
       const daysDiff=ms.days_diff;
@@ -538,7 +538,7 @@ function buildMsSection(mid){
       </div>`;
     }).join('');
     return`<div class="ms-wrap">
-      <div class="ms-proj" style="display:flex;align-items:center;gap:6px">${p.name} · ${done}/${p.milestones.length}${revBadge}</div>
+      <div class="ms-proj" style="display:flex;align-items:center;gap:6px">${p.name} · ${done}/${(p.milestones||[]).length}${revBadge}</div>
       <div class="ms-cols">${items}
     </div></div>`;
   }).join('');
@@ -547,7 +547,7 @@ function buildMsSection(mid){
 // ── VELOCITY ──
 function buildVelocitySection(mid){
   const projs=S.projects.filter(p=>p.assignee===mid);
-  const hitMs=projs.flatMap(p=>p.milestones.filter(ms=>ms.status==='hit'&&ms.on_time!==null&&ms.on_time!==undefined));
+  const hitMs=projs.flatMap(p=>(p.milestones||[]).filter(ms=>ms.status==='hit'&&ms.on_time!==null&&ms.on_time!==undefined));
   if(!hitMs.length)return'';
   const ontime=hitMs.filter(ms=>ms.on_time===true).length;
   const late=hitMs.filter(ms=>ms.on_time===false).length;
@@ -608,7 +608,7 @@ function buildBriefRatingSection(mid){
     if(!lastDay)return'';
     const br=e[lastDay].br;
     if(typeof br==='string'){
-      const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+      const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
       if(!projs.length)return'';
       const label={g:'Mandiri',m:'Wajar',l:'Sering tanya'}[br]||'—';
       const cls={g:'br-g',m:'br-m',l:'br-l'}[br]||'br-m';
@@ -619,7 +619,7 @@ function buildBriefRatingSection(mid){
     }
     return'';
   }
-  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   const rows=Object.entries(briefRatings).map(([bid,vals])=>{
     const proj=projs.find(p=>p.id===bid)||{name:bid};
     // Ambil rating terakhir
@@ -743,7 +743,7 @@ function buildMonthReview(m,month,y){
 
   if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Setoran harian konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Setoran harian kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Setoran harian sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
   if(dr!==null){if(dr>=90)pos.push(`Delivery rate sangat baik — ${dr}% milestone on-time`);else if(dr>=70)neg.push(`Beberapa milestone terlambat — delivery rate ${dr}%`);else neg.push(`Delivery rate kritis — ${dr}%, banyak milestone kelewat`);}
-  const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>p.milestones.filter(ms=>ms.status==='late')).map(ms=>ms.name);
+  const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>(p.milestones||[]).filter(ms=>ms.status==='late')).map(ms=>ms.name);
   if(lateMs.length)neg.push(`Milestone terlambat: ${lateMs.slice(0,3).join(', ')}${lateMs.length>3?` (+${lateMs.length-3} lainnya)`:''}`);
   const brC={g:0,m:0,l:0};days.forEach(d=>{const b=entries[d]?.br||'m';brC[b]++;});
   if(brC.l>brC.g&&brC.l>=2)neg.push(`Pemahaman brief menurun — ${brC.l} hari sering tanya dasar`);
@@ -876,9 +876,9 @@ function renderInpForm(mid){
   fAbsReason=existing?.absent_reason||'';
   const note=existing?.note||'';
   const channel=ch(m.lead);
-  const projs=S.projects.filter(p=>p.assignee===mid&&p.active);
+  const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   const projHtml=projs.length?projs.map(p=>{
-    const items=p.milestones.map((ms,i)=>{
+    const items=(p.milestones||[]).map((ms,i)=>{
       const st=ms.status;
       const rc=st==='hit'?'done':st?'late':'';
       const cc=st==='hit'?'done':st?'late':'';
@@ -950,7 +950,8 @@ function toggleInpMsNew(pid,idx){
   const key=`${pid}-${idx}`;
   inpMsChecked[key]=!inpMsChecked[key];
   const p=S.projects.find(x=>x.id===pid);if(!p)return;
-  const ms=p.milestones[idx];
+  const ms=(p.milestones||[])[idx];
+  if(!ms)return;
   const td=today();
   if(inpMsChecked[key]){const _d=ms.due||ms.deadline;ms.status=!_d?'hit':(_d>=td?'hit':'late');}
   else ms.status=null;
@@ -983,12 +984,14 @@ function saveEntryNew(){
 // ── PROJECTS ──
 function renderProjects(){
   const members=S.members.filter(m=>m.lead===curLead);
-  const active=S.projects.filter(p=>p.active&&members.some(m=>m.id===p.assignee));
+  console.log("curLead:",curLead,"members:",members.map(m=>m.id),"projects assignees:",S.projects.map(p=>p.assignee+"/"+p.active));
+  const active=(S.projects||[]).filter(p=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
   document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
-    const done=p.milestones.filter(ms=>ms.status==='hit').length;
-    const items=p.milestones.map((ms,i)=>`<div class="msr ${ms.status==='hit'?'done':ms.status?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${ms.status==='hit'?'done':ms.status?'late':''}">${ms.status==='hit'?'✓':ms.status?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${ms.status==='hit'?'ts':ms.status?'tb':'tn'}" style="font-size:10px">${ms.status==='hit'?'selesai':ms.status?'terlambat':'pending'}</span></div>`).join('');
-    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${p.milestones.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
+    const ms_list=p.milestones||[];
+    const done=ms_list.filter(ms=>ms.status==='hit').length;
+    const items=ms_list.map((ms,i)=>`<div class="msr ${ms.status==='hit'?'done':ms.status?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${ms.status==='hit'?'done':ms.status?'late':''}">${ms.status==='hit'?'✓':ms.status?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${ms.status==='hit'?'ts':ms.status?'tb':'tn'}" style="font-size:10px">${ms.status==='hit'?'selesai':ms.status?'terlambat':'pending'}</span></div>`).join('');
+    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const sel=document.getElementById('np-assign');
   sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
