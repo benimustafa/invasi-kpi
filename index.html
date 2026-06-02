@@ -95,6 +95,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .dms{background:#FFEBEE}.dms .dds{color:var(--crit)}
 .dft{background:var(--bg)}.dft .dds{color:var(--t3)}
 .dwfh{background:#FFF8E1}.dwfh .dds{color:var(--warn)}
+/* attachment count badge di day grid */
+.dd-att{font-size:9px;font-weight:500;font-family:var(--mono);margin-top:3px;border-radius:3px;padding:1px 3px;display:inline-block}
+.att-ok{background:#E8F5E9;color:var(--ok)}
+.att-warn{background:#FFF8E1;color:var(--warn)}
+.att-miss{background:#F5F4F0;color:var(--t3)}
+/* ── INPUT SUMMARY CARD ── */
+.inp-summary{background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;flex-direction:column;gap:6px}
+.inp-sum-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;font-size:12px}
+.inp-sum-lbl{color:var(--t2);flex:1}
+.inp-sum-val{font-weight:500;font-family:var(--mono);font-size:11px;white-space:nowrap}
+.sv-ok{color:var(--ok)}.sv-warn{color:var(--warn)}.sv-miss{color:var(--crit)}
 
 /* ── MILESTONE ── */
 .ms-wrap{margin-bottom:.875rem}
@@ -490,15 +501,18 @@ function buildDots(mid){
   return`<div class="daygrid">${dates.map((d,i)=>{
     const entry=e[d];
     const fut=d>td;
-    let cls='dft',sym='·';
+    let cls='dft',sym='·',attachHtml='';
     if(entry){
+      const ac=entry.attachment_count||0;
       if(entry.att==='n'){cls='dms';sym='✗';}
       else if(entry.att==='w'){cls='dwfh';sym='WFH';}
       else if(entry.upd==='y'){cls='dok';sym='✓';}
       else{cls='dms';sym='—';}
-    } else if(fut){cls='dft';sym='·';}
-    else{cls='dms';sym='—';}
-    return`<div class="dd ${cls}"><div class="ddl">${DN[i]}</div><div class="dds">${sym}</div></div>`;
+      if(ac>=2){attachHtml='<div class="dd-att att-ok">'+ac+'x</div>';}
+      else if(ac===1){attachHtml='<div class="dd-att att-warn">1x</div>';}
+      else if(entry.att!=='n'&&d<=td){attachHtml='<div class="dd-att att-miss">0x</div>';}
+    } else if(!fut&&d<=td){attachHtml='<div class="dd-att att-miss">—</div>';}
+    return`<div class="dd ${cls}"><div class="ddl">${DN[i]}</div><div class="dds">${sym}</div>${attachHtml}</div>`;
   }).join('')}</div>`;
 }
 
@@ -903,9 +917,29 @@ function renderInpForm(mid){
     </div>
   </div>`;
 
+  // Build summary card: attachment hari ini + next milestone + brief rating terakhir + catatan terakhir
+  const todayAtt=existing?.attachment_count||0;
+  const attIcon=todayAtt>=2?'✅':todayAtt===1?'⚠️':'🔴';
+  const attLabel=todayAtt>=2?`${todayAtt}x — aktif`:todayAtt===1?'1x — minimal':'0x — belum ada file';
+  const nextMs=(projs.flatMap(p=>(p.milestones||[]).filter(ms=>ms.status!=='hit')))[0];
+  const nextMsTxt=nextMs?`🎯 ${nextMs.name}${(nextMs.due||nextMs.deadline)?' · deadline '+fmtDate(nextMs.due||nextMs.deadline):''}`:null;
+  const nextMsOverdue=nextMs&&(nextMs.due||nextMs.deadline)&&(nextMs.due||nextMs.deadline)<td;
+  const allDays=Object.keys(S.entries[mid]||{}).sort();
+  const lastDay=allDays.filter(d=>d<td).pop();
+  const lastEntry=lastDay?(S.entries[mid]||{})[lastDay]:null;
+  const lastBr=lastEntry?.br?{g:'Mandiri',m:'Wajar',l:'Sering tanya'}[lastEntry.br]||null:null;
+  const lastNote=lastEntry?.note||null;
+  const summaryHtml=`<div class="inp-summary">
+    <div class="inp-sum-row"><span class="inp-sum-lbl">📎 Setoran hari ini</span><span class="inp-sum-val ${todayAtt>=2?'sv-ok':todayAtt===1?'sv-warn':'sv-miss'}">${attIcon} ${attLabel}</span></div>
+    ${nextMsTxt?`<div class="inp-sum-row"><span class="inp-sum-lbl" style="${nextMsOverdue?'color:var(--crit)':''}">${nextMsTxt}</span></div>`:''}
+    ${lastBr?`<div class="inp-sum-row"><span class="inp-sum-lbl">🧠 Brief terakhir</span><span class="inp-sum-val">${lastBr}</span></div>`:''}
+    ${lastNote?`<div class="inp-sum-row"><span class="inp-sum-lbl">📝 Catatan terakhir</span><span class="inp-sum-val" style="color:var(--t2)">${lastNote}</span></div>`:''}
+  </div>`;
+
   document.getElementById('inp-form-wrap').innerHTML=`
     <div class="fcard">
       <div class="ftitle">${m.name} <span style="color:var(--t3);font-weight:400;font-size:12px">· ${m.role}</span></div>
+      ${summaryHtml}
       <div class="frow"><label class="flbl">Milestone selesai hari ini</label>${projHtml}</div>
       <div class="frow"><label class="flbl">Hadir di studio</label>
         <div class="opts">${mkOpts('att',[['h','Hadir'],['w','WFH'],['n','Tidak hadir']],fAttL)}</div>
