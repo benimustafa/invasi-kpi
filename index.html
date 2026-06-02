@@ -411,7 +411,7 @@ function closeSidebar(){
 // ── METRICS ──
 function getDeliveryRate(mid){
   const projs=S.projects.filter(p=>p.assignee===mid);
-  const due=projs.flatMap(p=>p.milestones.filter(ms=>ms.deadline&&ms.deadline<=today()));
+  const due=projs.flatMap(p=>p.milestones.filter(ms=>ms.due||ms.deadline&&ms.due||ms.deadline<=today()));
   if(!due.length)return null;
   return Math.round(due.filter(ms=>ms.status==='hit').length/due.length*100);
 }
@@ -439,7 +439,7 @@ function getMonthTier(mid,month){
     const filled=dates.map(d=>e[d]).filter(Boolean);
     if(!filled.length)continue;
     const projs=S.projects.filter(p=>p.assignee===mid);
-    const wkDue=projs.flatMap(p=>p.milestones.filter(ms=>ms.deadline&&ms.deadline>=dates[0]&&ms.deadline<=dates[4]));
+    const wkDue=projs.flatMap(p=>p.milestones.filter(ms=>ms.due||ms.deadline&&ms.due||ms.deadline>=dates[0]&&ms.due||ms.deadline<=dates[4]));
     const dr=wkDue.length?wkDue.filter(ms=>ms.status==='hit').length/wkDue.length*100:85;
     const ur=filled.filter(e=>e.upd==='y').length/5*100;
     if(dr>=90&&ur>=90)scores.push(4);
@@ -513,7 +513,7 @@ function buildMsSection(mid){
     const revBadge=revisi>0?`<span class="rev-badge">${revisi}x revisi</span>`:'';
     const items=p.milestones.map((ms,i)=>{
       const st=ms.status;
-      const isOverdue=!st&&ms.deadline&&ms.deadline<todayStr;
+      const isOverdue=!st&&ms.due||ms.deadline&&ms.due||ms.deadline<todayStr;
       const daysDiff=ms.days_diff;
       let rc='',cc='',sym='';
       let badge='';
@@ -526,14 +526,14 @@ function buildMsSection(mid){
         }
       } else if(isOverdue){
         rc='overdue';cc='overdue';sym='!';
-        const d=Math.round((new Date(todayStr)-new Date(ms.deadline))/(1000*60*60*24));
+        const d=Math.round((new Date(todayStr)-new Date(ms.due||ms.deadline))/(1000*60*60*24));
         badge=`<span class="ms-overdue-badge">overdue ${d}h</span>`;
       }
       return`<div class="msr ${rc}" onclick="toggleMs('${p.id}',${i})">
         <div class="mschk ${cc}">${sym}</div>
         <div style="flex:1;min-width:0">
           <div class="msn" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">${ms.name}${badge}</div>
-          <div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}${ms.completed_date?` · selesai ${fmtDate(ms.completed_date)}`:''}</div>
+          <div class="msd">${ms.due||ms.deadline?fmtDate(ms.due||ms.deadline):'no deadline'}${ms.completed_date?` · selesai ${fmtDate(ms.completed_date)}`:''}</div>
         </div>
       </div>`;
     }).join('');
@@ -884,7 +884,7 @@ function renderInpForm(mid){
       const cc=st==='hit'?'done':st?'late':'';
       return`<div class="msr ${rc}" id="ims-${p.id}-${i}" onclick="toggleInpMsNew('${p.id}',${i})">
         <div class="mschk ${cc}" id="imc-${p.id}-${i}">${st==='hit'?'✓':st?'!':''}</div>
-        <div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div>
+        <div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.due||ms.deadline?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div>
       </div>`;
     }).join('');
     return`<div style="margin-bottom:.875rem"><div class="ms-proj">${p.name}</div><div class="ms-cols">${items}</div></div>`;
@@ -952,7 +952,7 @@ function toggleInpMsNew(pid,idx){
   const p=S.projects.find(x=>x.id===pid);if(!p)return;
   const ms=p.milestones[idx];
   const td=today();
-  if(inpMsChecked[key])ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');
+  if(inpMsChecked[key])ms.status=!ms.due||ms.deadline?'hit':(ms.due||ms.deadline>=td?'hit':'late');
   else ms.status=null;
   const c=document.getElementById(`imc-${pid}-${idx}`);
   const r=document.getElementById(`ims-${pid}-${idx}`);
@@ -987,7 +987,7 @@ function renderProjects(){
   document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
     const done=p.milestones.filter(ms=>ms.status==='hit').length;
-    const items=p.milestones.map((ms,i)=>`<div class="msr ${ms.status==='hit'?'done':ms.status?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${ms.status==='hit'?'done':ms.status?'late':''}">${ms.status==='hit'?'✓':ms.status?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.deadline?fmtDate(ms.deadline):'no deadline'}</div></div><span class="tier ${ms.status==='hit'?'ts':ms.status?'tb':'tn'}" style="font-size:10px">${ms.status==='hit'?'selesai':ms.status?'terlambat':'pending'}</span></div>`).join('');
+    const items=p.milestones.map((ms,i)=>`<div class="msr ${ms.status==='hit'?'done':ms.status?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${ms.status==='hit'?'done':ms.status?'late':''}">${ms.status==='hit'?'✓':ms.status?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${ms.due||ms.deadline?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${ms.status==='hit'?'ts':ms.status?'tb':'tn'}" style="font-size:10px">${ms.status==='hit'?'selesai':ms.status?'terlambat':'pending'}</span></div>`).join('');
     return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${p.milestones.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const sel=document.getElementById('np-assign');
@@ -1010,8 +1010,8 @@ function createProject(){
   showToast('Project dibuat — '+name);renderProjects();
 }
 
-function toggleProjMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');else ms.status=null;save();renderProjects();}
-function toggleMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status)ms.status=!ms.deadline?'hit':(ms.deadline>=td?'hit':'late');else ms.status=null;save();renderPage(curPage);}
+function toggleProjMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status)ms.status=!ms.due||ms.deadline?'hit':(ms.due||ms.deadline>=td?'hit':'late');else ms.status=null;save();renderProjects();}
+function toggleMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status)ms.status=!ms.due||ms.deadline?'hit':(ms.due||ms.deadline>=td?'hit':'late');else ms.status=null;save();renderPage(curPage);}
 function closeProj(pid){const p=S.projects.find(x=>x.id===pid);if(p)p.active=false;save();renderProjects();}
 
 // ── SETTINGS ──
