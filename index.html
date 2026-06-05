@@ -416,6 +416,16 @@ let fAttL='h',fUpdL='y',fBrL='m',fAbsReason='';
 function save(){if(window._fbSave)window._fbSave(S);}
 function weekDates(off=0){const n=new Date(),dy=n.getDay()||7;const m=new Date(n);m.setDate(n.getDate()-dy+1+off*7);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});}
 function today(){return new Date().toISOString().slice(0,10);}
+function effStatus(ms){
+  // Kalau sudah hit → selesai
+  if(ms.status==='hit') return 'hit';
+  // Kalau status null/undefined tapi deadline sudah lewat → late
+  const _d=ms.due||ms.deadline;
+  if(!ms.status && _d && _d<today()) return 'late';
+  // Kalau ada status lain (misal 'late' dari Firebase) → pakai itu
+  if(ms.status) return ms.status;
+  return null; // pending
+}
 function addDays(date,n){const d=new Date(date);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 function fmtDate(s){return s?s.slice(5).replace('-','/'):'—';}
 function weekRange(){const d=weekDates();return d[0].slice(5).replace('-','/')+'–'+d[4].slice(5).replace('-','/');}
@@ -440,7 +450,7 @@ function getDeliveryRate(mid){
   const projs=S.projects.filter(p=>p.assignee===mid);
   const due=projs.flatMap(p=>(p.milestones||[]).filter(ms=>(ms.due||ms.deadline)&&(ms.due||ms.deadline)<=today()));
   if(!due.length)return null;
-  return Math.round(due.filter(ms=>ms.status==='hit').length/due.length*100);
+  return Math.round(due.filter(ms=>effStatus(ms)==='hit').length/due.length*100);
 }
 function getUpdateRate(mid){
   const e=S.entries[mid]||{},days=Object.keys(e);
@@ -467,7 +477,7 @@ function getMonthTier(mid,month){
     if(!filled.length)continue;
     const projs=S.projects.filter(p=>p.assignee===mid);
     const wkDue=projs.flatMap(p=>(p.milestones||[]).filter(ms=>{const _d=ms.due||ms.deadline;return _d&&_d>=dates[0]&&_d<=dates[4];}));
-    const dr=wkDue.length?wkDue.filter(ms=>ms.status==='hit').length/wkDue.length*100:85;
+    const dr=wkDue.length?wkDue.filter(ms=>effStatus(ms)==='hit').length/wkDue.length*100:85;
     const ur=filled.filter(e=>e.upd==='y').length/5*100;
     if(dr>=90&&ur>=90)scores.push(4);
     else if(dr>=80&&ur>=70)scores.push(3);
@@ -488,7 +498,7 @@ function buildBriefCtx(mid){
   const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   if(!projs.length)return'';
   const rows=projs.map(p=>{
-    const done=(p.milestones||[]).filter(ms=>ms.status==='hit').length;
+    const done=(p.milestones||[]).filter(ms=>effStatus(ms)==='hit').length;
     const total=(p.milestones||[]).length;
     const pct=total?Math.round(done/total*100):0;
     const nextMs=(p.milestones||[]).find(ms=>ms.status!=='hit');
@@ -537,12 +547,12 @@ function buildMsSection(mid){
   if(!projs.length)return`<div style="font-size:12px;color:var(--t3);margin-bottom:.875rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const todayStr=today();
   return projs.map(p=>{
-    const done=(p.milestones||[]).filter(ms=>ms.status==='hit').length;
+    const done=(p.milestones||[]).filter(ms=>effStatus(ms)==='hit').length;
     // Revisi count dari data Firebase kalau ada
     const revisi=p.revisi_count||0;
     const revBadge=revisi>0?`<span class="rev-badge">${revisi}x revisi</span>`:'';
     const items=(p.milestones||[]).map((ms,i)=>{
-      const st=ms.status;
+      const st=effStatus(ms);
       const isOverdue=!st&&(ms.due||ms.deadline)&&(ms.due||ms.deadline)<todayStr;
       const daysDiff=ms.days_diff;
       let rc='',cc='',sym='';
@@ -773,7 +783,7 @@ function buildMonthReview(m,month,y){
 
   if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Setoran harian konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Setoran harian kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Setoran harian sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
   if(dr!==null){if(dr>=90)pos.push(`Delivery rate sangat baik — ${dr}% milestone on-time`);else if(dr>=70)neg.push(`Beberapa milestone terlambat — delivery rate ${dr}%`);else neg.push(`Delivery rate kritis — ${dr}%, banyak milestone kelewat`);}
-  const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>(p.milestones||[]).filter(ms=>ms.status==='late')).map(ms=>ms.name);
+  const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>(p.milestones||[]).filter(ms=>effStatus(ms)==='late')).map(ms=>ms.name);
   if(lateMs.length)neg.push(`Milestone terlambat: ${lateMs.slice(0,3).join(', ')}${lateMs.length>3?` (+${lateMs.length-3} lainnya)`:''}`);
   const brC={g:0,m:0,l:0};days.forEach(d=>{const b=entries[d]?.br||'m';brC[b]++;});
   if(brC.l>brC.g&&brC.l>=2)neg.push(`Pemahaman brief menurun — ${brC.l} hari sering tanya dasar`);
@@ -909,7 +919,7 @@ function renderInpForm(mid){
   const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   const projHtml=projs.length?projs.map(p=>{
     const items=(p.milestones||[]).map((ms,i)=>{
-      const st=ms.status;
+      const st=effStatus(ms);
       const rc=st==='hit'?'done':st?'late':'';
       const cc=st==='hit'?'done':st?'late':'';
       return`<div class="msr ${rc}" id="ims-${p.id}-${i}" onclick="toggleInpMsNew('${p.id}',${i})">
@@ -937,7 +947,7 @@ function renderInpForm(mid){
   const todayAtt=existing?.attachment_count||0;
   const attIcon=todayAtt>=2?'✅':todayAtt===1?'⚠️':'🔴';
   const attLabel=todayAtt>=2?`${todayAtt}x — aktif`:todayAtt===1?'1x — minimal':'0x — belum ada file';
-  const nextMs=(projs.flatMap(p=>(p.milestones||[]).filter(ms=>ms.status!=='hit')))[0];
+  const nextMs=(projs.flatMap(p=>(p.milestones||[]).filter(ms=>effStatus(ms)!=='hit')))[0];
   const nextMsTxt=nextMs?`🎯 ${nextMs.name}${(nextMs.due||nextMs.deadline)?' · deadline '+fmtDate(nextMs.due||nextMs.deadline):''}`:null;
   const nextMsOverdue=nextMs&&(nextMs.due||nextMs.deadline)&&(nextMs.due||nextMs.deadline)<td;
   const allDays=Object.keys(S.entries[mid]||{}).sort();
@@ -1039,8 +1049,8 @@ function renderProjects(){
   document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
-    const done=ms_list.filter(ms=>ms.status==='hit').length;
-    const items=ms_list.map((ms,i)=>`<div class="msr ${ms.status==='hit'?'done':ms.status?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${ms.status==='hit'?'done':ms.status?'late':''}">${ms.status==='hit'?'✓':ms.status?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${ms.status==='hit'?'ts':ms.status?'tb':'tn'}" style="font-size:10px">${ms.status==='hit'?'selesai':ms.status?'terlambat':'pending'}</span></div>`).join('');
+    const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
+    const items=ms_list.map((ms,i)=>{const es=effStatus(ms);return`<div class="msr ${es==='hit'?'done':es?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${es==='hit'?'done':es?'late':''}">${es==='hit'?'✓':es?'!':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${es==='hit'?'ts':es?'tb':'tn'}" style="font-size:10px">${es==='hit'?'selesai':es?'terlambat':'pending'}</span></div>`;}).join('');
     return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const sel=document.getElementById('np-assign');
@@ -1064,7 +1074,9 @@ function createProject(){
 }
 
 function toggleProjMs(pid,idx){
-  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  console.log('toggleProjMs called',pid,idx,'projects:',S.projects.map(p=>p?.id));
+  const p=S.projects.find(x=>x.id===pid);
+  if(!p){console.error('Project not found:',pid);alert('Project '+pid+' tidak ditemukan di S.projects');return;}
   const ms=p.milestones[idx],td=today();
   if(!ms.status){
     const _d=ms.due||ms.deadline;
