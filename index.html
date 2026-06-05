@@ -1046,12 +1046,12 @@ function renderProjects(){
   const members=S.members.filter(m=>m.lead===curLead);
   console.log("curLead:",curLead,"members:",members.map(m=>m.id),"projects assignees:",S.projects.map(p=>p.assignee+"/"+p.active));
   const active=(S.projects||[]).filter(p=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
-  document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
+  document.getElementById('proj-active').innerHTML=active.length?active.map((p,pIdx)=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
     const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
-    const items=ms_list.map((ms,i)=>{const es=effStatus(ms);return`<div class="msr ${es==='hit'?'done':es?'late':''}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${es==='hit'?'done':es?'late':''}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${es==='hit'?'ts':es?'tb':'tn'}" style="font-size:10px">${es==='hit'?'selesai':es?'terlambat':'pending'}</span></div>`;}).join('');
-    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
+    const items=ms_list.map((ms,i)=>{const es=effStatus(ms);return`<div class="msr ${es==='hit'?'done':es?'late':''}" onclick="toggleProjMs(${pIdx},${i})"><div class="mschk ${es==='hit'?'done':es?'late':''}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${es==='hit'?'ts':es?'tb':'tn'}" style="font-size:10px">${es==='hit'?'selesai':es?'terlambat':'pending'}</span></div>`;}).join('');
+    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj(${pIdx})">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const sel=document.getElementById('np-assign');
   sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
@@ -1073,23 +1073,20 @@ function createProject(){
   showToast('Project dibuat — '+name);renderProjects();
 }
 
-function toggleProjMs(pid,idx){
-  const p=S.projects.find(x=>x.id===pid);
+function toggleProjMs(pIdx,idx){
+  const p=S.projects[pIdx];
   if(!p)return;
   const ms=p.milestones[idx],td=today();
   const cur=effStatus(ms);
   if(cur==='hit'){
-    // Toggle off — set kembali ke null
     ms.status=null;ms.completed_date=null;ms.on_time=null;
   }else{
-    // Klik → selalu set hit, termasuk yang terlambat
     const _d=ms.due||ms.deadline;
     ms.status='hit';
     ms.completed_date=td;
-    ms.on_time=!_d||_d>=td; // on_time=false kalau deadline sudah lewat
+    ms.on_time=!_d||_d>=td;
   }
-  const projIdx=S.projects.findIndex(x=>x.id===pid);
-  if(projIdx>=0&&window._fbSaveMilestone)window._fbSaveMilestone(projIdx,idx,ms);
+  if(window._fbSaveMilestone)window._fbSaveMilestone(pIdx,idx,ms);
   renderProjects();
 }
 function toggleMs(pid,idx){
@@ -1108,11 +1105,10 @@ function toggleMs(pid,idx){
   if(projIdx>=0&&window._fbSaveMilestone)window._fbSaveMilestone(projIdx,idx,ms);
   renderPage(curPage);
 }
-function closeProj(pid){
-  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+function closeProj(pIdx){
+  const p=S.projects[pIdx];if(!p)return;
   p.active=false;
-  const projIdx=S.projects.findIndex(x=>x.id===pid);
-  if(projIdx>=0&&window._fbSaveProjectActive)window._fbSaveProjectActive(projIdx,false);
+  if(window._fbSaveProjectActive)window._fbSaveProjectActive(pIdx,false);
   renderProjects();
 }
 
