@@ -1045,8 +1045,11 @@ function saveEntryNew(){
 function renderProjects(){
   const members=S.members.filter(m=>m.lead===curLead);
   console.log("curLead:",curLead,"members:",members.map(m=>m.id),"projects assignees:",S.projects.map(p=>p.assignee+"/"+p.active));
-  const active=(S.projects||[]).filter(p=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
-  document.getElementById('proj-active').innerHTML=active.length?active.map((p,pIdx)=>{
+  // Simpan index asli S.projects supaya toggleProjMs bisa akses langsung
+  const active=(S.projects||[])
+    .map((p,realIdx)=>({p,realIdx}))
+    .filter(({p})=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
+  document.getElementById('proj-active').innerHTML=active.length?active.map(({p,realIdx:pIdx})=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
     const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
