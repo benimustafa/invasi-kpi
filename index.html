@@ -353,12 +353,28 @@ textarea.fc{resize:vertical;font-family:var(--mono);font-size:12px;line-height:1
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 const firebaseConfig={apiKey:"AIzaSyDXaaTr-gFkfY_5Ikmni8cz6UIbKzEGEns",authDomain:"invasi-kpi.firebaseapp.com",databaseURL:"https://invasi-kpi-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"invasi-kpi",storageBucket:"invasi-kpi.firebasestorage.app",messagingSenderId:"857676439142",appId:"1:857676439142:web:e6f0eb5d2e0799cedc57a7"};
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 const dbRef=ref(db,'invasi_kpi');
-window._fbSave=function(data){set(dbRef,data).catch(e=>console.error('Firebase save error:',e));};
+// Gunakan update() per path — tidak overwrite entries/sessions/user_ids
+window._fbSave=function(data){
+  const projRef=ref(db,'invasi_kpi/projects');
+  const membRef=ref(db,'invasi_kpi/members');
+  set(projRef, data.projects).catch(e=>console.error('Firebase save projects error:',e));
+  set(membRef, data.members).catch(e=>console.error('Firebase save members error:',e));
+};
+// Simpan milestone tunggal langsung ke path-nya — lebih aman
+window._fbSaveMilestone=function(projIdx, msIdx, msData){
+  const msRef=ref(db,`invasi_kpi/projects/${projIdx}/milestones/${msIdx}`);
+  set(msRef, msData).catch(e=>console.error('Firebase save milestone error:',e));
+};
+// Simpan project active status
+window._fbSaveProjectActive=function(projIdx, active){
+  const pRef=ref(db,`invasi_kpi/projects/${projIdx}/active`);
+  set(pRef, active).catch(e=>console.error('Firebase save project active error:',e));
+};
 onValue(dbRef,(snapshot)=>{
   const val=snapshot.val();
   if(val){
@@ -1047,9 +1063,38 @@ function createProject(){
   showToast('Project dibuat — '+name);renderProjects();
 }
 
-function toggleProjMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status){const _d=ms.due||ms.deadline;ms.status=!_d?'hit':(_d>=td?'hit':'late');}else ms.status=null;save();renderProjects();}
-function toggleMs(pid,idx){const p=S.projects.find(x=>x.id===pid);if(!p)return;const ms=p.milestones[idx],td=today();if(!ms.status){const _d=ms.due||ms.deadline;ms.status=!_d?'hit':(_d>=td?'hit':'late');}else ms.status=null;save();renderPage(curPage);}
-function closeProj(pid){const p=S.projects.find(x=>x.id===pid);if(p)p.active=false;save();renderProjects();}
+function toggleProjMs(pid,idx){
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  const ms=p.milestones[idx],td=today();
+  if(!ms.status){
+    const _d=ms.due||ms.deadline;
+    ms.status=!_d?'hit':(_d>=td?'hit':'late');
+    if(ms.status==='hit'){ms.completed_date=td;ms.on_time=!_d||_d>=td;}
+  }else{ms.status=null;ms.completed_date=null;ms.on_time=null;}
+  // Simpan hanya milestone ini langsung ke Firebase — tidak overwrite entries
+  const projIdx=S.projects.findIndex(x=>x.id===pid);
+  if(projIdx>=0&&window._fbSaveMilestone)window._fbSaveMilestone(projIdx,idx,ms);
+  renderProjects();
+}
+function toggleMs(pid,idx){
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  const ms=p.milestones[idx],td=today();
+  if(!ms.status){
+    const _d=ms.due||ms.deadline;
+    ms.status=!_d?'hit':(_d>=td?'hit':'late');
+    if(ms.status==='hit'){ms.completed_date=td;ms.on_time=!_d||_d>=td;}
+  }else{ms.status=null;ms.completed_date=null;ms.on_time=null;}
+  const projIdx=S.projects.findIndex(x=>x.id===pid);
+  if(projIdx>=0&&window._fbSaveMilestone)window._fbSaveMilestone(projIdx,idx,ms);
+  renderPage(curPage);
+}
+function closeProj(pid){
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
+  p.active=false;
+  const projIdx=S.projects.findIndex(x=>x.id===pid);
+  if(projIdx>=0&&window._fbSaveProjectActive)window._fbSaveProjectActive(projIdx,false);
+  renderProjects();
+}
 
 // ── SETTINGS ──
 function renderSettings(){
