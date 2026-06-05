@@ -113,7 +113,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--tx);font-size:14px
 .ms-cols{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .msr{display:flex;align-items:center;gap:8px;padding:7px 9px;background:var(--bg);border-radius:6px;cursor:pointer;transition:all .1s;border:1px solid transparent}
 .msr:hover{background:var(--bdr)}.msr.done{background:var(--ok-l);border-color:var(--ok-b)}
+.msr.done.early{background:#E3F2FD;border-color:#90CAF9}
+.msr.done.late-done{background:#FFF3E0;border-color:#FFB74D}
 .msr.late{background:var(--crit-l);border-color:var(--crit-b)}
+.mschk.early{background:#1565C0;border-color:#1565C0;color:#fff}
+.mschk.late-done{background:#E65100;border-color:#E65100;color:#fff}
+.tier.te{color:#1565C0;font-weight:500}
+.tier.to{color:#E65100;font-weight:500}
 .mschk{width:16px;height:16px;border-radius:3px;border:1.5px solid var(--bdrx);display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:all .12s}
 .mschk.done{background:var(--ok);border-color:var(--ok);color:#fff}
 .mschk.late{background:#fff;border-color:var(--crit);color:var(--crit)}
@@ -417,14 +423,43 @@ function save(){if(window._fbSave)window._fbSave(S);}
 function weekDates(off=0){const n=new Date(),dy=n.getDay()||7;const m=new Date(n);m.setDate(n.getDate()-dy+1+off*7);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});}
 function today(){return new Date().toISOString().slice(0,10);}
 function effStatus(ms){
-  // Kalau sudah hit → selesai
   if(ms.status==='hit') return 'hit';
-  // Kalau status null/undefined tapi deadline sudah lewat → late
   const _d=ms.due||ms.deadline;
   if(!ms.status && _d && _d<today()) return 'late';
-  // Kalau ada status lain (misal 'late' dari Firebase) → pakai itu
   if(ms.status) return ms.status;
-  return null; // pending
+  return null;
+}
+function doneVariant(ms){
+  // Return variant class untuk milestone yang sudah hit
+  // early: selesai sebelum deadline
+  // late-done: selesai tapi terlambat
+  // '' : tepat waktu atau no deadline
+  if(ms.status!=='hit') return '';
+  const _d=ms.due||ms.deadline;
+  if(!_d) return '';
+  if(ms.on_time===false) return 'late-done';
+  // Cek apakah selesai lebih cepat (completed_date < deadline)
+  const cd=ms.completed_date||today();
+  if(cd<_d) return 'early';
+  return '';
+}
+function doneLabel(ms){
+  const v=doneVariant(ms);
+  if(v==='early') return 'lebih cepat';
+  if(v==='late-done') return 'terlambat selesai';
+  return 'selesai';
+}
+function doneTierClass(ms){
+  const v=doneVariant(ms);
+  if(v==='early') return 'te';
+  if(v==='late-done') return 'to';
+  return 'ts';
+}
+function doneChkClass(ms){
+  const v=doneVariant(ms);
+  if(v==='early') return 'early';
+  if(v==='late-done') return 'late-done';
+  return 'done';
 }
 function addDays(date,n){const d=new Date(date);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
 function fmtDate(s){return s?s.slice(5).replace('-','/'):'—';}
@@ -1053,7 +1088,15 @@ function renderProjects(){
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
     const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
-    const items=ms_list.map((ms,i)=>{const es=effStatus(ms);return`<div class="msr ${es==='hit'?'done':es?'late':''}" onclick="toggleProjMs(${pIdx},${i})"><div class="mschk ${es==='hit'?'done':es?'late':''}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${es==='hit'?'ts':es?'tb':'tn'}" style="font-size:10px">${es==='hit'?'selesai':es?'terlambat':'pending'}</span></div>`;}).join('');
+    const items=ms_list.map((ms,i)=>{
+      const es=effStatus(ms);
+      const dv=doneVariant(ms);
+      const msrCls=es==='hit'?`done${dv?' '+dv:''}`:es?'late':'';
+      const chkCls=es==='hit'?doneChkClass(ms):es?'late':'';
+      const tierCls=es==='hit'?doneTierClass(ms):es?'tb':'tn';
+      const lbl=es==='hit'?doneLabel(ms):es?'terlambat':'pending';
+      return`<div class="msr ${msrCls}" onclick="toggleProjMs(${pIdx},${i})"><div class="mschk ${chkCls}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${tierCls}" style="font-size:10px">${lbl}</span></div>`;
+    }).join('');
     return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj(${pIdx})">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const sel=document.getElementById('np-assign');
