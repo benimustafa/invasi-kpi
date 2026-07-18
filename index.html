@@ -387,6 +387,10 @@ window._fbSaveMilestone=function(pid, msIdx, msData){
   set(ref(db,`invasi_kpi/projects/${pid}/milestones/${msIdx}`), msData)
     .catch(e=>console.error('Firebase save milestone error:',e));
 };
+window._fbSaveProjectField=function(pid, field, val){
+  set(ref(db,`invasi_kpi/projects/${pid}/${field}`), val)
+    .catch(e=>console.error('Firebase save field error:',e));
+};
 window._fbSaveProjectActive=function(pid, active){
   set(ref(db,`invasi_kpi/projects/${pid}/active`), active)
     .catch(e=>console.error('Firebase save project active error:',e));
@@ -403,6 +407,8 @@ onValue(dbRef,(snapshot)=>{
     if(val.members)S.members=normList(val.members);
     if(val.entries)S.entries=val.entries;
     if(val.projects)S.projects=normList(val.projects);
+    if(val.overdue_log)S.overdueLog=val.overdue_log;
+    try{autoCloseCompleted();}catch(e){}
     try{renderPage(window._curPage||'weekly');}catch(e){}
   }
   const ov=document.getElementById('fb-loading');
@@ -428,7 +434,7 @@ const DEF={
     {id:'dirda',name:'Dirda',team:'Video',            role:'Videographer',  lead:'yogi',av:'a3'},
     {id:'wawan',name:'Wawan',team:'Font',             role:'Font Designer', lead:'gha', av:'a4'},
   ],
-  entries:{},projects:[]
+  entries:{},projects:[],overdueLog:{}
 };
 let S=JSON.parse(JSON.stringify(DEF));
 let curLead='yogi',curMonth=new Date().getMonth(),curPage='weekly';
@@ -456,6 +462,26 @@ function brVal(e){
   if(typeof e.br==='string')return e.br;
   const vals=Object.values(e.br);return vals.length?vals[vals.length-1]:null;
 }
+// ═══ AUTO-CLOSE ═══
+// Semua milestone hit → project otomatis ditandai selesai (hilang dari daftar aktif).
+// Dipanggil saat data load & setiap toggle milestone — idempotent.
+function autoCloseCompleted(){
+  let closed=[];
+  (S.projects||[]).forEach(p=>{
+    if(!(p.active===true||p.active==="true"))return;
+    const ms=p.milestones||[];
+    if(!ms.length)return;
+    if(ms.every(x=>x.status==='hit')){
+      p.active=false;p.completed_at=today();
+      if(window._fbSaveProjectActive)window._fbSaveProjectActive(p.id,false);
+      if(window._fbSaveProjectField)window._fbSaveProjectField(p.id,'completed_at',p.completed_at);
+      closed.push(p.name);
+    }
+  });
+  if(closed.length&&typeof showToast==='function'){try{showToast(`✓ Selesai otomatis: ${closed.join(', ')}`);}catch(e){}}
+  return closed.length;
+}
+
 function effStatus(ms){
   if(ms.status==='hit') return 'hit';
   const _d=ms.due||ms.deadline;
@@ -846,7 +872,12 @@ function buildMonthReview(m,month,y){
   const entries=S.entries[m.id]||{};
   const days=Object.keys(entries).filter(k=>k.startsWith(pfx)).sort();
   const tier=getMonthTier(m.id,month),ti=tierInfo(tier);
-  const dr=getDeliveryRate(m.id);
+  // Delivery rate BULAN INI: milestone yang selesai bulan itu saja.
+  // Fallback ke rate keseluruhan kalau belum ada milestone selesai bulan ini.
+  const msMonth=S.projects.filter(p=>p.assignee===m.id)
+    .flatMap(p=>(p.milestones||[]).filter(ms=>ms.status==='hit'&&(ms.completed_date||'').startsWith(pfx)&&ms.on_time!==null&&ms.on_time!==undefined));
+  const drMonth=msMonth.length?Math.round(msMonth.filter(ms=>ms.on_time).length/msMonth.length*100):null;
+  const dr=drMonth!==null?drMonth:getDeliveryRate(m.id);
   const ur=days.length?Math.round(days.filter(d=>isSetor(entries[d])).length/days.length*100):null;
   const prevTier=getMonthTier(m.id,month-1);
   const tierChg=tier&&prevTier?(TORD[tier]>TORD[prevTier]?'↑':TORD[tier]<TORD[prevTier]?'↓':'→'):'';
@@ -882,11 +913,70 @@ function buildMonthReview(m,month,y){
 
   const mkItems=(arr,dot)=>arr.map(t=>`<div class="ritem"><span class="rdot ${dot}"></span><span>${t}</span></div>`).join('');
 
+  // ═══ BRIEF DIKERJAKAN BULAN INI ═══
+  // Project yang disentuh bulan ini: dibuat bulan ini, ada milestone selesai
+  // bulan ini, atau masih aktif. Tampilkan stage tiap milestone.
+  const memberProjs=S.projects.filter(p=>{
+    if(p.assignee!==m.id)return false;
+    const msList=p.milestones||[];
+    const touchedThisMonth=
+      (p.created_at||'').startsWith(pfx)||
+      (p.completed_at||'').startsWith(pfx)||
+      msList.some(ms=>(ms.completed_date||'').startsWith(pfx));
+    const stillActive=(p.active===true||p.active==="true");
+    return touchedThisMonth||stillActive;
+  });
+  const briefSection=memberProjs.length?`
+    <div class="rsec">
+      <div class="rsec-t act">Brief dikerjakan bulan ini</div>
+      ${memberProjs.map(p=>{
+        const msList=p.milestones||[];
+        const doneN=msList.filter(ms=>ms.status==='hit').length;
+        const isDone=msList.length&&doneN===msList.length;
+        const statusBadge=isDone
+          ?`<span class="ms-ontime-badge">✓ selesai${p.completed_at?' '+fmtDate(p.completed_at):''}</span>`
+          :`<span style="font-family:var(--mono);font-size:10px;color:var(--t3)">berjalan</span>`;
+        const msRows=msList.map(ms=>{
+          const dl=ms.due||ms.deadline;
+          let stTxt,stCls;
+          if(ms.status==='hit'){
+            stTxt=ms.on_time===false?`selesai ${fmtDate(ms.completed_date||'')} · telat ${Math.abs(ms.days_diff||0)}h`:`selesai${ms.completed_date?' '+fmtDate(ms.completed_date):''}`;
+            stCls=ms.on_time===false?'color:var(--warn,#b45309)':'color:var(--ok)';
+          } else if(dl&&dl<today()){
+            stTxt=`overdue (target ${fmtDate(dl)})`;stCls='color:var(--crit)';
+          } else {
+            stTxt=dl?`target ${fmtDate(dl)}`:'belum ada deadline';stCls='color:var(--t3)';
+          }
+          return`<div class="ritem"><span class="rdot ${ms.status==='hit'?'pos':(dl&&dl<today()?'neg':'act')}"></span>
+            <span>${ms.name} <span style="font-family:var(--mono);font-size:10px;${stCls}">— ${stTxt}</span></span></div>`;
+        }).join('');
+        return`<div style="margin-bottom:.625rem">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;margin-bottom:4px">
+            ${p.name} <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">${doneN}/${msList.length}</span> ${statusBadge}
+          </div>${msRows}</div>`;
+      }).join('')}
+    </div>`:'';
+
+  // ═══ ALASAN OVERDUE (dari bot, node overdue_log) ═══
+  const ovReasons=[];
+  Object.entries(S.overdueLog||{}).forEach(([date,items])=>{
+    if(!date.startsWith(pfx))return;
+    Object.values(items||{}).forEach(ov=>{
+      if(ov&&ov.assignee===m.id&&ov.reason)ovReasons.push({date,proj:ov.project,ms:ov.milestone,reason:ov.reason});
+    });
+  });
+  const ovSection=ovReasons.length?`
+    <div class="rsec">
+      <div class="rsec-t neg">Alasan keterlambatan tercatat</div>
+      ${ovReasons.map(o=>`<div class="ritem"><span class="rdot neg"></span>
+        <span><span style="font-family:var(--mono);font-size:10px;color:var(--t3)">${fmtDate(o.date)}</span> ${o.proj}${o.ms?' · '+o.ms:''} — ${o.reason}</span></div>`).join('')}
+    </div>`:'';
+
   // Catatan section
   const notesSection=monthNotes.length?`
     <div class="rsec">
       <div class="rsec-t act">Catatan harian bulan ini</div>
-      ${monthNotes.slice(-10).map(({d,note,att})=>`
+      ${monthNotes.map(({d,note,att})=>`
         <div class="ritem">
           <span class="rdot act"></span>
           <span><span style="font-family:var(--mono);font-size:10px;color:var(--t3)">${fmtDate(d)}</span>${att==='n'?' <span style="color:var(--crit);font-size:10px">[tidak hadir]</span>':''} ${note}</span>
@@ -905,6 +995,8 @@ function buildMonthReview(m,month,y){
       ${pos.length?`<div class="rsec"><div class="rsec-t pos">Yang konsisten</div>${mkItems(pos,'pos')}</div>`:''}
       ${neg.length?`<div class="rsec"><div class="rsec-t neg">Perlu dibahas</div>${mkItems(neg,'neg')}</div>`:''}
       ${act.length?`<div class="rsec"><div class="rsec-t act">Rekomendasi topik 1-on-1</div>${mkItems(act,'act')}</div>`:''}
+      ${briefSection}
+      ${ovSection}
       ${notesSection}
     </div>
   </div>`;
@@ -1120,6 +1212,7 @@ function saveEntryNew(){
     if(ms&&window._fbSaveMilestone)window._fbSaveMilestone(pid,idx,ms);
   });
   inpMsChecked={};
+  autoCloseCompleted();
   const m=S.members.find(x=>x.id===mid);
   showToast(`Tersimpan · ${m?.name} · ${td}`);
   renderInput();
@@ -1132,7 +1225,26 @@ function renderProjects(){
   // Simpan index asli S.projects supaya toggleProjMs bisa akses langsung
   const active=(S.projects||[])
     .filter(p=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
-  document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
+  const completedRecent=(S.projects||[])
+    .filter(p=>!(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee))
+    .sort((a,b)=>(b.completed_at||b.created_at||'').localeCompare(a.completed_at||a.created_at||''))
+    .slice(0,10);
+  const completedHtml=completedRecent.length?`
+    <div style="margin-top:1.5rem">
+      <div style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--t3);margin-bottom:8px">Selesai terbaru</div>
+      ${completedRecent.map(p=>{
+        const asgn=S.members.find(m=>m.id===p.assignee);
+        const msL=p.milestones||[];
+        const doneN=msL.filter(ms=>ms.status==='hit').length;
+        const late=msL.filter(ms=>ms.on_time===false).length;
+        return`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--bdr);border-radius:8px;margin-bottom:6px;font-size:12px;background:var(--surf)">
+          <span style="color:var(--ok)">✓</span>
+          <span style="flex:1;font-weight:500">${p.name}</span>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--t3)">${asgn?asgn.name:p.assignee} · ${doneN}/${msL.length}${late?` · ${late} telat`:''}${p.completed_at?` · ${fmtDate(p.completed_at)}`:''}</span>
+        </div>`;
+      }).join('')}
+    </div>`:'';
+  document.getElementById('proj-active').innerHTML=(active.length?active.map(p=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
     const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
@@ -1146,7 +1258,7 @@ function renderProjects(){
       return`<div class="msr ${msrCls}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${chkCls}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${tierCls}" style="font-size:10px">${lbl}</span></div>`;
     }).join('');
     return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
-  }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
+  }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`)+completedHtml;
   const sel=document.getElementById('np-assign');
   sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
   buildTplGrid();
@@ -1183,6 +1295,7 @@ function toggleProjMs(pid,idx){
     ms.on_time=!_d||_d>=td;
   }
   if(window._fbSaveMilestone)window._fbSaveMilestone(pid,idx,ms);
+  autoCloseCompleted();
   renderProjects();
 }
 function toggleMs(pid,idx){
@@ -1198,6 +1311,7 @@ function toggleMs(pid,idx){
     ms.on_time=!_d||_d>=td;
   }
   if(window._fbSaveMilestone)window._fbSaveMilestone(pid,idx,ms);
+  autoCloseCompleted();
   renderPage(curPage);
 }
 function closeProj(pid){
