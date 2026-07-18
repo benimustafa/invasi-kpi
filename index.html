@@ -364,29 +364,45 @@ const firebaseConfig={apiKey:"AIzaSyDXaaTr-gFkfY_5Ikmni8cz6UIbKzEGEns",authDomai
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 const dbRef=ref(db,'invasi_kpi');
-// Gunakan update() per path — tidak overwrite entries/sessions/user_ids
-window._fbSave=function(data){
-  const projRef=ref(db,'invasi_kpi/projects');
-  const membRef=ref(db,'invasi_kpi/members');
-  set(projRef, data.projects).catch(e=>console.error('Firebase save projects error:',e));
-  set(membRef, data.members).catch(e=>console.error('Firebase save members error:',e));
+// ═══ SCHEMA BARU: projects = dict keyed by project id ═══
+// SEMUA write per-path. TIDAK ADA lagi full-node overwrite projects
+// (dulu sumber konflik: dashboard menimpa project yang baru dibuat bot).
+function normList(v){
+  // Firebase bisa return: array (dengan null bekas delete), dict numeric-key,
+  // atau dict by id (schema baru). Normalize ke array bersih.
+  if(!v)return[];
+  if(Array.isArray(v))return v.filter(Boolean);
+  return Object.values(v).filter(Boolean);
+}
+window._fbSaveMembers=function(members){
+  set(ref(db,'invasi_kpi/members'), members).catch(e=>console.error('Firebase save members error:',e));
 };
-// Simpan milestone tunggal langsung ke path-nya — lebih aman
-window._fbSaveMilestone=function(projIdx, msIdx, msData){
-  const msRef=ref(db,`invasi_kpi/projects/${projIdx}/milestones/${msIdx}`);
-  set(msRef, msData).catch(e=>console.error('Firebase save milestone error:',e));
+// Simpan 1 project utuh ke path id-nya
+window._fbSaveProject=function(p){
+  if(!p||!p.id){console.error('_fbSaveProject tanpa id',p);return;}
+  set(ref(db,`invasi_kpi/projects/${p.id}`), p).catch(e=>console.error('Firebase save project error:',e));
 };
-// Simpan project active status
-window._fbSaveProjectActive=function(projIdx, active){
-  const pRef=ref(db,`invasi_kpi/projects/${projIdx}/active`);
-  set(pRef, active).catch(e=>console.error('Firebase save project active error:',e));
+// Simpan milestone tunggal — path by PROJECT ID (index tidak pernah geser lagi)
+window._fbSaveMilestone=function(pid, msIdx, msData){
+  set(ref(db,`invasi_kpi/projects/${pid}/milestones/${msIdx}`), msData)
+    .catch(e=>console.error('Firebase save milestone error:',e));
+};
+window._fbSaveProjectActive=function(pid, active){
+  set(ref(db,`invasi_kpi/projects/${pid}/active`), active)
+    .catch(e=>console.error('Firebase save project active error:',e));
+};
+// BARU: simpan entry KPI per-path — dulu input manual dashboard TIDAK PERNAH
+// masuk Firebase (bug utama "input manual hilang / konflik")
+window._fbSaveEntry=function(mid, date, entry){
+  set(ref(db,`invasi_kpi/entries/${mid}/${date}`), entry)
+    .catch(e=>console.error('Firebase save entry error:',e));
 };
 onValue(dbRef,(snapshot)=>{
   const val=snapshot.val();
   if(val){
-    if(val.members)S.members=Array.isArray(val.members)?val.members:Object.values(val.members);
+    if(val.members)S.members=normList(val.members);
     if(val.entries)S.entries=val.entries;
-    if(val.projects)S.projects=Array.isArray(val.projects)?val.projects:Object.values(val.projects);
+    if(val.projects)S.projects=normList(val.projects);
     try{renderPage(window._curPage||'weekly');}catch(e){}
   }
   const ov=document.getElementById('fb-loading');
@@ -419,15 +435,35 @@ let curLead='yogi',curMonth=new Date().getMonth(),curPage='weekly';
 let charts={},selTpl=null,curInpMember=null,inpMsChecked={};
 let fAttL='h',fUpdL='y',fBrL='m',fAbsReason='';
 
-function save(){if(window._fbSave)window._fbSave(S);}
-function weekDates(off=0){const n=new Date(),dy=n.getDay()||7;const m=new Date(n);m.setDate(n.getDate()-dy+1+off*7);return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setDate(m.getDate()+i);return d.toISOString().slice(0,10);});}
-function today(){return new Date().toISOString().slice(0,10);}
+function saveMembers(){if(window._fbSaveMembers)window._fbSaveMembers(S.members);}
+// ═══ TANGGAL WIB ═══
+// Bug lama: toISOString() = tanggal UTC → jam 00.00–06.59 WIB dianggap "kemarin".
+// Sekarang semua tanggal digeser ke UTC+7 dulu.
+function wibDate(base){const d=base?new Date(base):new Date();return new Date(d.getTime()+7*3600*1000);}
+function today(){return wibDate().toISOString().slice(0,10);}
+function weekDates(off=0){
+  const n=wibDate(),dy=n.getUTCDay()||7;
+  const m=new Date(n);m.setUTCDate(n.getUTCDate()-dy+1+off*7);
+  return Array.from({length:5},(_,i)=>{const d=new Date(m);d.setUTCDate(m.getUTCDate()+i);return d.toISOString().slice(0,10);});
+}
+// ═══ SETORAN ═══
+// Bug lama: cuma upd==='y' yang dihitung — padahal bot nulis "1"/"2" dari
+// sync attachment Trello → dashboard salah hitung rate/streak/chart.
+function isSetor(e){return !!e&&['y','1','2',1,2].includes(e.upd);}
+// br bisa string (lama) atau object per-brief (baru) — ambil representasi string
+function brVal(e){
+  if(!e||!e.br)return null;
+  if(typeof e.br==='string')return e.br;
+  const vals=Object.values(e.br);return vals.length?vals[vals.length-1]:null;
+}
 function effStatus(ms){
   if(ms.status==='hit') return 'hit';
   const _d=ms.due||ms.deadline;
-  if(!ms.status && _d && _d<today()) return 'late';
-  if(ms.status) return ms.status;
-  return null;
+  // 'pending' (dari bot) = sama dengan belum ada status — dulu 'pending' truthy
+  // dan ikut jalur 'late' di rendering → milestone baru tampil "terlambat"
+  const st=(ms.status&&ms.status!=='pending')?ms.status:null;
+  if(!st && _d && _d<today()) return 'late';
+  return st;
 }
 function doneVariant(ms){
   // Return variant class untuk milestone yang sudah hit
@@ -490,7 +526,7 @@ function getDeliveryRate(mid){
 function getUpdateRate(mid){
   const e=S.entries[mid]||{},days=Object.keys(e);
   if(!days.length)return null;
-  return Math.round(days.filter(d=>e[d].upd==='y').length/days.length*100);
+  return Math.round(days.filter(d=>isSetor(e[d])).length/days.length*100);
 }
 function getTier(mid){
   const dr=getDeliveryRate(mid),ur=getUpdateRate(mid);
@@ -513,7 +549,7 @@ function getMonthTier(mid,month){
     const projs=S.projects.filter(p=>p.assignee===mid);
     const wkDue=projs.flatMap(p=>(p.milestones||[]).filter(ms=>{const _d=ms.due||ms.deadline;return _d&&_d>=dates[0]&&_d<=dates[4];}));
     const dr=wkDue.length?wkDue.filter(ms=>effStatus(ms)==='hit').length/wkDue.length*100:85;
-    const ur=filled.filter(e=>e.upd==='y').length/5*100;
+    const ur=filled.filter(e=>isSetor(e)).length/5*100;
     if(dr>=90&&ur>=90)scores.push(4);
     else if(dr>=80&&ur>=70)scores.push(3);
     else if(dr>=60&&ur>=50)scores.push(2);
@@ -523,7 +559,7 @@ function getMonthTier(mid,month){
   const avg=scores.reduce((a,b)=>a+b)/scores.length;
   if(avg>=3.5)return'exceptional';if(avg>=2.5)return'solid';if(avg>=1.5)return'ontrack';return'below';
 }
-function getStreak(mid){let s=0;for(let w=0;w>=-24;w--){const dates=weekDates(w),e=S.entries[mid]||{},filled=dates.map(d=>e[d]).filter(Boolean);if(!filled.length)break;if(filled.filter(x=>x.upd==='y').length/5<0.4)break;s++;}return s;}
+function getStreak(mid){let s=0;for(let w=0;w>=-24;w--){const dates=weekDates(w),e=S.entries[mid]||{},filled=dates.map(d=>e[d]).filter(Boolean);if(!filled.length)break;if(filled.filter(x=>isSetor(x)).length/5<0.4)break;s++;}return s;}
 function tierInfo(t){return{null:{l:'Belum ada data',c:'tn'},below:{l:'Below',c:'tb'},ontrack:{l:'On Track',c:'to'},solid:{l:'Solid',c:'ts'},exceptional:{l:'Exceptional',c:'tex'}}[t]||{l:'—',c:'tn'};}
 function drCls(v){if(v===null)return'drb-n';if(v>=90)return'drb-ok';if(v>=70)return'drb-w';return'drb-c';}
 function drCol(v){if(v===null)return'c-neu';if(v>=90)return'c-ok';if(v>=70)return'c-warn';return'c-crit';}
@@ -567,7 +603,7 @@ function buildDots(mid){
       const ac=entry.attachment_count||0;
       if(entry.att==='n'){cls='dms';sym='✗';}
       else if(entry.att==='w'){cls='dwfh';sym='WFH';}
-      else if(entry.upd==='y'){cls='dok';sym='✓';}
+      else if(isSetor(entry)){cls='dok';sym='✓';}
       else{cls='dms';sym='—';}
       if(ac>=2){attachHtml='<div class="dd-att att-ok">'+ac+'x</div>';}
       else if(ac===1){attachHtml='<div class="dd-att att-warn">1x</div>';}
@@ -645,7 +681,7 @@ function getIdleDays(mid){
   // Cek dari entry terakhir upd=y
   const days=Object.keys(e).sort().reverse();
   for(const d of days){
-    if(e[d]&&e[d].upd==='y'){
+    if(isSetor(e[d])){
       const diff=Math.round((new Date(todayStr)-new Date(d))/(1000*60*60*24));
       return diff;
     }
@@ -715,7 +751,7 @@ function memberCard(m){
   const dr=getDeliveryRate(m.id),ur=getUpdateRate(m.id),streak=getStreak(m.id);
   const streakHtml=streak>1?`<span class="strk"><b>${streak}</b> mg</span>`:'';
   const e=S.entries[m.id]||{},days=Object.keys(e).sort();
-  const wkUpd=weekDates().filter(d=>e[d]&&e[d].upd==='y').length;
+  const wkUpd=weekDates().filter(d=>isSetor(e[d])).length;
   const lastAtt=days.length?({h:'Hadir',w:'WFH',n:'Tidak hadir'}[e[days[days.length-1]]?.att||'h']):'—';
   const lastNote=days.length&&e[days[days.length-1]]?.note;
   const wkAttach=weekDates().reduce((sum,d)=>sum+(e[d]?.attachment_count||0),0);
@@ -793,7 +829,7 @@ function renderMonthly(){
   members.forEach(m=>{
     const pfx=`${y}-${String(curMonth+1).padStart(2,'0')}`;
     const days=Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx));
-    const ur=days.length?Math.round(days.filter(d=>(S.entries[m.id]||{})[d]?.upd==='y').length/days.length*100):null;
+    const ur=days.length?Math.round(days.filter(d=>isSetor((S.entries[m.id]||{})[d])).length/days.length*100):null;
     if(ur!==null)allUrs.push(ur);
     const dr=getDeliveryRate(m.id);if(dr!==null)allDrs.push(dr);
   });
@@ -811,16 +847,16 @@ function buildMonthReview(m,month,y){
   const days=Object.keys(entries).filter(k=>k.startsWith(pfx)).sort();
   const tier=getMonthTier(m.id,month),ti=tierInfo(tier);
   const dr=getDeliveryRate(m.id);
-  const ur=days.length?Math.round(days.filter(d=>entries[d].upd==='y').length/days.length*100):null;
+  const ur=days.length?Math.round(days.filter(d=>isSetor(entries[d])).length/days.length*100):null;
   const prevTier=getMonthTier(m.id,month-1);
   const tierChg=tier&&prevTier?(TORD[tier]>TORD[prevTier]?'↑':TORD[tier]<TORD[prevTier]?'↓':'→'):'';
   const pos=[],neg=[],act=[];
 
-  if(ur!==null){const wd=days.filter(d=>entries[d].upd==='y').length;if(ur>=80)pos.push(`Setoran harian konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Setoran harian kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Setoran harian sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
+  if(ur!==null){const wd=days.filter(d=>isSetor(entries[d])).length;if(ur>=80)pos.push(`Setoran harian konsisten — ${wd}/${days.length} hari (${ur}%)`);else if(ur>=50)neg.push(`Setoran harian kurang konsisten — ${wd}/${days.length} hari (${ur}%)`);else neg.push(`Setoran harian sangat rendah — hanya ${wd}/${days.length} hari (${ur}%)`);}
   if(dr!==null){if(dr>=90)pos.push(`Delivery rate sangat baik — ${dr}% milestone on-time`);else if(dr>=70)neg.push(`Beberapa milestone terlambat — delivery rate ${dr}%`);else neg.push(`Delivery rate kritis — ${dr}%, banyak milestone kelewat`);}
   const lateMs=S.projects.filter(p=>p.assignee===m.id).flatMap(p=>(p.milestones||[]).filter(ms=>effStatus(ms)==='late')).map(ms=>ms.name);
   if(lateMs.length)neg.push(`Milestone terlambat: ${lateMs.slice(0,3).join(', ')}${lateMs.length>3?` (+${lateMs.length-3} lainnya)`:''}`);
-  const brC={g:0,m:0,l:0};days.forEach(d=>{const b=entries[d]?.br||'m';brC[b]++;});
+  const brC={g:0,m:0,l:0};days.forEach(d=>{const b=brVal(entries[d])||'m';if(brC[b]!==undefined)brC[b]++;});
   if(brC.l>brC.g&&brC.l>=2)neg.push(`Pemahaman brief menurun — ${brC.l} hari sering tanya dasar`);
   else if(brC.g>=days.length*0.6)pos.push(`Pemahaman brief baik — mandiri di ${brC.g}/${days.length} hari`);
   const attH=days.filter(d=>entries[d]?.att==='h').length;
@@ -904,7 +940,7 @@ function renderYearly(){
     return`<div class="sal warn"><div class="sal-t">${m.name} — Review — target Solid dulu</div><div class="sal-s">On Track stabil. ${solidMos} bulan di Solid/Exceptional dari ${tiers.length} bulan tercatat</div></div>`;
   }).join('');
   const colors=['#1B4F72','#512E5F','#1E8449','#7D6608','#922B21','#1B4F72'];
-  mkChart('ch-yr',MN,members.map((m,i)=>({label:m.name,data:Array.from({length:12},(_,mo)=>{const pfx=`${y}-${String(mo+1).padStart(2,'0')}`;return Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx)&&(S.entries[m.id]||{})[k]?.upd==='y').length;}),borderColor:colors[i%colors.length],backgroundColor:'transparent',tension:.4,pointRadius:3,spanGaps:true})));
+  mkChart('ch-yr',MN,members.map((m,i)=>({label:m.name,data:Array.from({length:12},(_,mo)=>{const pfx=`${y}-${String(mo+1).padStart(2,'0')}`;return Object.keys(S.entries[m.id]||{}).filter(k=>k.startsWith(pfx)&&isSetor((S.entries[m.id]||{})[k])).length;}),borderColor:colors[i%colors.length],backgroundColor:'transparent',tension:.4,pointRadius:3,spanGaps:true})));
 }
 
 // ── INPUT PAGE ──
@@ -947,7 +983,7 @@ function renderInpForm(mid){
   const existing=(S.entries[mid]||{})[td];
   fAttL=existing?.att||'h';
   fUpdL=existing?.upd||'y';
-  fBrL=existing?.br||'m';
+  fBrL=brVal(existing)||'m';
   fAbsReason=existing?.absent_reason||'';
   const note=existing?.note||'';
   const channel=ch(m.lead);
@@ -988,7 +1024,7 @@ function renderInpForm(mid){
   const allDays=Object.keys(S.entries[mid]||{}).sort();
   const lastDay=allDays.filter(d=>d<td).pop();
   const lastEntry=lastDay?(S.entries[mid]||{})[lastDay]:null;
-  const lastBr=lastEntry?.br?{g:'Mandiri',m:'Wajar',l:'Sering tanya'}[lastEntry.br]||null:null;
+  const lastBr=brVal(lastEntry)?{g:'Mandiri',m:'Wajar',l:'Sering tanya'}[brVal(lastEntry)]||null:null;
   const lastNote=lastEntry?.note||null;
   const summaryHtml=`<div class="inp-summary">
     <div class="inp-sum-row"><span class="inp-sum-lbl">📎 Setoran hari ini</span><span class="inp-sum-val ${todayAtt>=2?'sv-ok':todayAtt===1?'sv-warn':'sv-miss'}">${attIcon} ${attLabel}</span></div>
@@ -1048,8 +1084,10 @@ function toggleInpMsNew(pid,idx){
   const ms=(p.milestones||[])[idx];
   if(!ms)return;
   const td=today();
-  if(inpMsChecked[key]){const _d=ms.due||ms.deadline;ms.status=!_d?'hit':(_d>=td?'hit':'late');}
-  else ms.status=null;
+  if(inpMsChecked[key]){
+    const _d=ms.due||ms.deadline;
+    ms.status='hit';ms.completed_date=td;ms.on_time=!_d||_d>=td;
+  } else {ms.status=null;ms.completed_date=null;ms.on_time=null;}
   const c=document.getElementById(`imc-${pid}-${idx}`);
   const r=document.getElementById(`ims-${pid}-${idx}`);
   if(c){c.className=`mschk${ms.status==='hit'?' done':ms.status?' late':''}`;c.textContent=ms.status==='hit'?'✓':ms.status?'!':'';}
@@ -1061,7 +1099,6 @@ function saveEntryNew(){
   const td=today();
   const note=document.getElementById('inp-note-f')?.value.trim()||'';
   if(!S.entries[mid])S.entries[mid]={};
-  // Simpan dengan field baru
   const entry={att:fAttL,upd:fUpdL,br:fBrL,note};
   if(fAttL==='n'&&fAbsReason)entry.absent_reason=fAbsReason;
   // Preserve field otomatis dari bot jika ada
@@ -1069,8 +1106,20 @@ function saveEntryNew(){
   if(existing?.milestones_done)entry.milestones_done=existing.milestones_done;
   if(existing?.projects_active)entry.projects_active=existing.projects_active;
   if(existing?.attachment_count)entry.attachment_count=existing.attachment_count;
+  // Kalau bot sudah nulis br object per-brief, jangan timpa dengan string manual
+  if(existing?.br&&typeof existing.br==='object'&&fBrL===brVal(existing))entry.br=existing.br;
   S.entries[mid][td]=entry;
-  save();
+  // FIX UTAMA: tulis entry ke Firebase per-path — dulu tidak pernah tersimpan!
+  if(window._fbSaveEntry)window._fbSaveEntry(mid,td,entry);
+  // Persist juga milestone yang dicentang di form input (dulu cuma berubah lokal)
+  Object.keys(inpMsChecked).forEach(key=>{
+    const li=key.lastIndexOf('-');
+    const pid=key.slice(0,li),idx=parseInt(key.slice(li+1));
+    const p=S.projects.find(x=>x.id===pid);
+    const ms=p&&(p.milestones||[])[idx];
+    if(ms&&window._fbSaveMilestone)window._fbSaveMilestone(pid,idx,ms);
+  });
+  inpMsChecked={};
   const m=S.members.find(x=>x.id===mid);
   showToast(`Tersimpan · ${m?.name} · ${td}`);
   renderInput();
@@ -1082,9 +1131,8 @@ function renderProjects(){
   console.log("curLead:",curLead,"members:",members.map(m=>m.id),"projects assignees:",S.projects.map(p=>p.assignee+"/"+p.active));
   // Simpan index asli S.projects supaya toggleProjMs bisa akses langsung
   const active=(S.projects||[])
-    .map((p,realIdx)=>({p,realIdx}))
-    .filter(({p})=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
-  document.getElementById('proj-active').innerHTML=active.length?active.map(({p,realIdx:pIdx})=>{
+    .filter(p=>(p.active===true||p.active==="true")&&members.some(m=>m.id===p.assignee));
+  document.getElementById('proj-active').innerHTML=active.length?active.map(p=>{
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
     const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
@@ -1095,9 +1143,9 @@ function renderProjects(){
       const chkCls=es==='hit'?doneChkClass(ms):es?'late':'';
       const tierCls=es==='hit'?doneTierClass(ms):es?'tb':'tn';
       const lbl=es==='hit'?doneLabel(ms):es?'terlambat':'pending';
-      return`<div class="msr ${msrCls}" onclick="toggleProjMs(${pIdx},${i})"><div class="mschk ${chkCls}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${tierCls}" style="font-size:10px">${lbl}</span></div>`;
+      return`<div class="msr ${msrCls}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${chkCls}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${tierCls}" style="font-size:10px">${lbl}</span></div>`;
     }).join('');
-    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj(${pIdx})">Tandai selesai</button></div>`;
+    return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`;
   const sel=document.getElementById('np-assign');
   sel.innerHTML=members.map(m=>`<option value="${m.id}">${m.name} — ${m.team}</option>`).join('');
@@ -1113,14 +1161,16 @@ function createProject(){
   const assignee=document.getElementById('np-assign').value;
   const raw=document.getElementById('np-ms').value.trim();
   if(!name||!raw){showToast('Isi nama dan milestone dulu');return;}
-  const milestones=raw.split('\n').map(l=>{const[n,d]=l.split('|').map(s=>s.trim());return{name:n,deadline:d||'',status:null};}).filter(m=>m.name);
-  S.projects.push({id:'p_'+Date.now(),name,assignee,milestones,active:true});
-  save();document.getElementById('np-name').value='';document.getElementById('np-ms').value='';selTpl=null;
+  const milestones=raw.split('\n').map(l=>{const[n,d]=l.split('|').map(s=>s.trim());return{name:n,deadline:d||'',status:'pending'};}).filter(m=>m.name);
+  const proj={id:'p'+Date.now().toString(36),name,assignee,milestones,active:true,created_at:today()};
+  S.projects.push(proj);
+  if(window._fbSaveProject)window._fbSaveProject(proj);
+  document.getElementById('np-name').value='';document.getElementById('np-ms').value='';selTpl=null;
   showToast('Project dibuat — '+name);renderProjects();
 }
 
-function toggleProjMs(pIdx,idx){
-  const p=S.projects[pIdx];
+function toggleProjMs(pid,idx){
+  const p=S.projects.find(x=>x.id===pid);
   if(!p)return;
   const ms=p.milestones[idx],td=today();
   const cur=effStatus(ms);
@@ -1132,7 +1182,7 @@ function toggleProjMs(pIdx,idx){
     ms.completed_date=td;
     ms.on_time=!_d||_d>=td;
   }
-  if(window._fbSaveMilestone)window._fbSaveMilestone(pIdx,idx,ms);
+  if(window._fbSaveMilestone)window._fbSaveMilestone(pid,idx,ms);
   renderProjects();
 }
 function toggleMs(pid,idx){
@@ -1147,14 +1197,13 @@ function toggleMs(pid,idx){
     ms.completed_date=td;
     ms.on_time=!_d||_d>=td;
   }
-  const projIdx=S.projects.findIndex(x=>x.id===pid);
-  if(projIdx>=0&&window._fbSaveMilestone)window._fbSaveMilestone(projIdx,idx,ms);
+  if(window._fbSaveMilestone)window._fbSaveMilestone(pid,idx,ms);
   renderPage(curPage);
 }
-function closeProj(pIdx){
-  const p=S.projects[pIdx];if(!p)return;
+function closeProj(pid){
+  const p=S.projects.find(x=>x.id===pid);if(!p)return;
   p.active=false;
-  if(window._fbSaveProjectActive)window._fbSaveProjectActive(pIdx,false);
+  if(window._fbSaveProjectActive)window._fbSaveProjectActive(pid,false);
   renderProjects();
 }
 
@@ -1169,11 +1218,11 @@ function addMember(){
   const role=document.getElementById('sn-r').value.trim();
   if(!name)return;
   S.members.push({id:name.toLowerCase().replace(/\s/g,'_')+'_'+Date.now(),name,team,role,lead:team==='Font'?'gha':'yogi',av:AVS[S.members.length%AVS.length]});
-  save();renderSettings();
+  saveMembers();renderSettings();
   document.getElementById('sn-n').value='';document.getElementById('sn-r').value='';
   showToast('Ditambah — '+name);
 }
-function removeMember(id){const m=S.members.find(x=>x.id===id);S.members=S.members.filter(x=>x.id!==id);save();renderSettings();showToast('Dihapus — '+(m?.name||''));}
+function removeMember(id){const m=S.members.find(x=>x.id===id);S.members=S.members.filter(x=>x.id!==id);saveMembers();renderSettings();showToast('Dihapus — '+(m?.name||''));}
 
 // ── NAV ──
 function goPage(p,btn){
