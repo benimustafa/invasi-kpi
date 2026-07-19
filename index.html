@@ -428,11 +428,11 @@ const TEMPLATES={
 };
 const DEF={
   members:[
-    {id:'devi', name:'Devi', team:'Ilustrasi & Canva',role:'Illustrator',   lead:'yogi',av:'a0'},
-    {id:'rega', name:'Rega', team:'Ilustrasi & Canva',role:'Illustrator',   lead:'yogi',av:'a1'},
-    {id:'suci', name:'Suci', team:'Ilustrasi & Canva',role:'Canva Designer',lead:'yogi',av:'a2'},
-    {id:'dirda',name:'Dirda',team:'Video',            role:'Videographer',  lead:'yogi',av:'a3'},
-    {id:'wawan',name:'Wawan',team:'Font',             role:'Font Designer', lead:'gha', av:'a4'},
+    {id:'devi', name:'Devi', team:'Ilustrasi & Canva',role:'Illustrator',   lead:'yogi',av:'a0',studio_required:true},
+    {id:'rega', name:'Rega', team:'Ilustrasi & Canva',role:'Illustrator',   lead:'yogi',av:'a1',studio_required:true},
+    {id:'suci', name:'Suci', team:'Ilustrasi & Canva',role:'Canva Designer',lead:'yogi',av:'a2',studio_required:false},
+    {id:'dirda',name:'Dirda',team:'Video',            role:'Videographer',  lead:'yogi',av:'a3',studio_required:false,setoran_manual:true},
+    {id:'wawan',name:'Wawan',team:'Font',             role:'Font Designer', lead:'gha', av:'a4',studio_required:true},
   ],
   entries:{},projects:[],overdueLog:{}
 };
@@ -456,6 +456,21 @@ function weekDates(off=0){
 // Bug lama: cuma upd==='y' yang dihitung — padahal bot nulis "1"/"2" dari
 // sync attachment Trello → dashboard salah hitung rate/streak/chart.
 function isSetor(e){return !!e&&['y','1','2',1,2].includes(e.upd);}
+// ═══ GROUP MILESTONE ═══
+// Card typework berisi banyak font → banyak checklist. Milestone menyimpan
+// `group` (nama checklist). Render dikelompokkan supaya tiap font punya
+// progress sendiri dan item kembar tidak membingungkan.
+function groupMs(msList){
+  const order=[],map={};
+  (msList||[]).forEach((ms,i)=>{
+    const g=ms.group||'';
+    if(!(g in map)){map[g]=[];order.push(g);}
+    map[g].push({ms,i});
+  });
+  return order.map(g=>({g,items:map[g]}));
+}
+function shortGroup(g){return (g||'').replace(/^Checklist\s+/i,'');}
+
 // br bisa string (lama) atau object per-brief (baru) — ambil representasi string
 function brVal(e){
   if(!e||!e.br)return null;
@@ -543,25 +558,81 @@ function closeSidebar(){
 }
 
 // ── METRICS ──
+// Skor per milestone hit: early = bonus, tepat = 100, telat = penalti bertingkat.
+function msDeliveryScore(ms){
+  // butuh info on_time/days_diff dari bot; fallback ke status saja
+  if(ms.status!=='hit') return 0;
+  const dd=ms.days_diff; // negatif = lebih cepat, positif = telat (hari)
+  if(dd===null||dd===undefined){
+    return ms.on_time===false?70:100; // tak ada detail hari
+  }
+  if(dd<=0){
+    // lebih cepat/tepat: tiap hari lebih awal +3, cap 115
+    return Math.min(115, 100 + Math.abs(dd)*3);
+  }
+  // telat: -6/hari, lantai 40
+  return Math.max(40, 100 - dd*6);
+}
 function getDeliveryRate(mid){
   const projs=S.projects.filter(p=>p.assignee===mid);
   const due=projs.flatMap(p=>(p.milestones||[]).filter(ms=>(ms.due||ms.deadline)&&(ms.due||ms.deadline)<=today()));
   if(!due.length)return null;
-  return Math.round(due.filter(ms=>effStatus(ms)==='hit').length/due.length*100);
+  // milestone due tapi belum hit = 0; yang hit = skornya (bisa >100 kalau early)
+  const scores=due.map(ms=>effStatus(ms)==='hit'?msDeliveryScore(ms):0);
+  const avg=scores.reduce((a,b)=>a+b,0)/scores.length;
+  return Math.round(Math.min(avg,115)); // izinkan sedikit di atas 100 utk reward
 }
 function getUpdateRate(mid){
   const e=S.entries[mid]||{},days=Object.keys(e);
   if(!days.length)return null;
   return Math.round(days.filter(d=>isSetor(e[d])).length/days.length*100);
 }
-function getTier(mid){
-  const dr=getDeliveryRate(mid),ur=getUpdateRate(mid);
-  if(dr===null&&ur===null)return null;
-  const d=dr??100,u=ur??100;
-  if(d>=90&&u>=90)return'exceptional';
-  if(d>=80&&u>=70)return'solid';
-  if(d>=60&&u>=50)return'ontrack';
+// ═══ KOMPONEN MANUAL (justifikasi lead) ═══
+// Pemahaman brief (br) & kehadiran (att) diisi lead → jadi bagian skor,
+// bukan cuma teks. Range 0..100.
+function getBriefScore(mid,dateList){
+  const e=S.entries[mid]||{};
+  const days=(dateList||Object.keys(e)).filter(d=>e[d]&&brVal(e[d]));
+  if(!days.length)return null;
+  // g=100 (mandiri), m=70 (wajar), l=35 (sering tanya)
+  const map={g:100,m:70,l:35};
+  const vals=days.map(d=>map[brVal(e[d])]??70);
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+}
+function getPresenceScore(mid,dateList){
+  const m=S.members.find(x=>x.id===mid);
+  // Kehadiran studio HANYA relevan untuk yang wajib nyetudio (Devi/Rega/Wawan).
+  // Suci (WFA penuh) & Dirda (datang pas shoot) → tidak dinilai kehadiran.
+  if(!m||!m.studio_required)return null;
+  const e=S.entries[mid]||{};
+  const days=(dateList||Object.keys(e)).filter(d=>e[d]&&e[d].att);
+  if(!days.length)return null;
+  // h=100, w=85 (WFH tetap kerja), n=0
+  const map={h:100,w:85,n:0};
+  const vals=days.map(d=>map[e[d].att]??100);
+  return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length);
+}
+// Composite: bobot delivery 45%, setoran 30%, brief 15%, kehadiran 10%.
+// Komponen null (belum ada data) tidak dihitung, bobot dinormalisasi ulang.
+function getCompositeScore(mid,dateList){
+  const dr=getDeliveryRate(mid), ur=getUpdateRate(mid);
+  const br=getBriefScore(mid,dateList), pr=getPresenceScore(mid,dateList);
+  const parts=[[dr,50],[ur,30],[br,10],[pr,10]].filter(([v])=>v!==null&&v!==undefined);
+  if(!parts.length)return null;
+  const wsum=parts.reduce((a,[,w])=>a+w,0);
+  const score=parts.reduce((a,[v,w])=>a+v*w,0)/wsum;
+  return Math.round(score);
+}
+function scoreToTier(s){
+  if(s===null)return null;
+  if(s>=88)return'exceptional';
+  if(s>=75)return'solid';
+  if(s>=58)return'ontrack';
   return'below';
+}
+function getTier(mid){
+  const s=getCompositeScore(mid);
+  return scoreToTier(s);
 }
 function getMonthTier(mid,month){
   const y=new Date().getFullYear(),pfx=`${y}-${String(month+1).padStart(2,'0')}`;
@@ -576,10 +647,11 @@ function getMonthTier(mid,month){
     const wkDue=projs.flatMap(p=>(p.milestones||[]).filter(ms=>{const _d=ms.due||ms.deadline;return _d&&_d>=dates[0]&&_d<=dates[4];}));
     const dr=wkDue.length?wkDue.filter(ms=>effStatus(ms)==='hit').length/wkDue.length*100:85;
     const ur=filled.filter(e=>isSetor(e)).length/5*100;
-    if(dr>=90&&ur>=90)scores.push(4);
-    else if(dr>=80&&ur>=70)scores.push(3);
-    else if(dr>=60&&ur>=50)scores.push(2);
-    else scores.push(1);
+    const br=getBriefScore(mid,dates), pr=getPresenceScore(mid,dates);
+    const parts=[[dr,50],[ur,30],[br,10],[pr,10]].filter(([v])=>v!==null&&v!==undefined);
+    const wsum=parts.reduce((a,[,w])=>a+w,0);
+    const comp=parts.reduce((a,[v,w])=>a+v*w,0)/wsum;
+    scores.push(comp>=88?4:comp>=75?3:comp>=58?2:1);
   }
   if(!scores.length)return null;
   const avg=scores.reduce((a,b)=>a+b)/scores.length;
@@ -599,7 +671,7 @@ function buildBriefCtx(mid){
     const total=(p.milestones||[]).length;
     const pct=total?Math.round(done/total*100):0;
     const nextMs=(p.milestones||[]).find(ms=>ms.status!=='hit');
-    const nextTxt=nextMs?`<span style="font-size:11px;color:var(--t3)">next: ${nextMs.name}${(nextMs.due||nextMs.deadline)?' ('+fmtDate(nextMs.due||nextMs.deadline)+')':''}</span>`:'<span style="font-size:11px;color:var(--ok)">✓ semua selesai</span>';
+    const nextTxt=nextMs?`<span style="font-size:11px;color:var(--t3)">next: ${nextMs.group?shortGroup(nextMs.group)+' · ':''}${nextMs.name}${(nextMs.due||nextMs.deadline)?' ('+fmtDate(nextMs.due||nextMs.deadline)+')':''}</span>`:'<span style="font-size:11px;color:var(--ok)">✓ semua selesai</span>';
     return`<div class="brief-ctx-row"><div class="brief-ctx-name">${p.name}</div><div class="brief-ctx-prog">${done}/${total}</div></div><div style="margin-bottom:4px;padding-left:0">${nextTxt}</div>`;
   }).join('');
   return`<div class="brief-ctx"><div class="brief-ctx-title">Brief aktif</div>${rows}</div>`;
@@ -648,7 +720,7 @@ function buildMsSection(mid){
     // Revisi count dari data Firebase kalau ada
     const revisi=p.revisi_count||0;
     const revBadge=revisi>0?`<span class="rev-badge">${revisi}x revisi</span>`:'';
-    const items=(p.milestones||[]).map((ms,i)=>{
+    const renderMsItem=({ms,i})=>{
       const st=effStatus(ms);
       const isOverdue=!st&&(ms.due||ms.deadline)&&(ms.due||ms.deadline)<todayStr;
       const daysDiff=ms.days_diff;
@@ -673,11 +745,17 @@ function buildMsSection(mid){
           <div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}${ms.completed_date?` · selesai ${fmtDate(ms.completed_date)}`:''}</div>
         </div>
       </div>`;
+    };
+    // Kelompokkan per checklist/font — tiap set punya header + progress sendiri
+    const grouped=groupMs(p.milestones||[]);
+    const items=grouped.map(({g,items})=>{
+      const gDone=items.filter(x=>effStatus(x.ms)==='hit').length;
+      const gHdr=g?`<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin:8px 0 4px;display:flex;align-items:center;gap:6px">${shortGroup(g)} <span style="font-family:var(--mono);font-weight:400;color:var(--t3)">${gDone}/${items.length}</span></div>`:'';
+      return gHdr+`<div class="ms-cols">${items.map(renderMsItem).join('')}</div>`;
     }).join('');
     return`<div class="ms-wrap">
       <div class="ms-proj" style="display:flex;align-items:center;gap:6px">${p.name} · ${done}/${(p.milestones||[]).length}${revBadge}</div>
-      <div class="ms-cols">${items}
-    </div></div>`;
+      ${items}</div>`;
   }).join('');
 }
 
@@ -772,6 +850,60 @@ function buildBriefRatingSection(mid){
   </div>`;
 }
 
+function buildDirdaSection(mid){
+  if(mid!=='dirda')return'';
+  const e=S.entries[mid]||{};
+  // kumpulkan detail 14 hari terakhir yang punya dirda_detail
+  const days=Object.keys(e).sort().slice(-14).reverse();
+  const rows=[];
+  const stageLabel={shoot:'Shoot',editing:'Editing',delivery:'Delivery',kendala:'Kendala'};
+  const stageCol={shoot:'#2563eb',editing:'#7c3aed',delivery:'var(--ok)',kendala:'var(--crit)'};
+  days.forEach(d=>{
+    const det=e[d]&&e[d].dirda_detail;
+    if(!det)return;
+    Object.values(det).forEach(x=>{
+      if(!x||!(x.stages&&x.stages.length)&&!x.upload)return;
+      const badges=(x.stages||[]).map(s=>`<span style="font-size:9px;padding:1px 6px;border-radius:8px;background:${stageCol[s]||'#888'}22;color:${stageCol[s]||'#888'};font-weight:600">${stageLabel[s]||s}</span>`).join(' ');
+      const up=x.upload?`<span style="font-family:var(--mono);font-size:10px;color:var(--ok)">↑${x.upload}</span>`:'';
+      rows.push(`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:11px">
+        <span style="font-family:var(--mono);font-size:9px;color:var(--t3);width:38px">${fmtDate(d)}</span>
+        <span style="flex:1">${badges} ${up}${x.kendala?` <span style="color:var(--crit);font-size:10px">⚠${x.kendala}</span>`:''}</span>
+      </div>${x.note?`<div style="font-size:10px;color:var(--t3);margin:0 0 5px 44px">${x.note}</div>`:''}`);
+    });
+  });
+  if(!rows.length)return'';
+  return`<div style="margin-bottom:.875rem"><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin-bottom:6px">Progress produksi (14 hari)</div>${rows.join('')}</div>`;
+}
+
+function buildScoreBreakdown(mid){
+  const comp=getCompositeScore(mid);
+  if(comp===null)return'';
+  const dr=getDeliveryRate(mid), ur=getUpdateRate(mid);
+  const br=getBriefScore(mid), pr=getPresenceScore(mid);
+  const row=(lbl,val,wt)=>{
+    if(val===null||val===undefined)return'';
+    const col=val>=85?'var(--ok)':val>=60?'#b45309':'var(--crit)';
+    return`<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;font-size:11px">
+      <span style="width:120px;color:var(--t2)">${lbl} <span style="color:var(--t3)">·${wt}%</span></span>
+      <div style="flex:1;height:5px;background:var(--bdr);border-radius:3px;overflow:hidden">
+        <div style="width:${val}%;height:100%;background:${col}"></div></div>
+      <span style="font-family:var(--mono);width:34px;text-align:right;color:${col}">${val}</span>
+    </div>`;
+  };
+  const tierCol=comp>=88?'var(--ok)':comp>=75?'#2563eb':comp>=58?'#b45309':'var(--crit)';
+  return`<div style="margin-bottom:.875rem;padding:10px 12px;border:1px solid var(--bdr);border-radius:10px;background:var(--surf)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--t3)">Skor KPI komposit</span>
+      <span style="font-family:var(--mono);font-size:16px;font-weight:700;color:${tierCol}">${comp}</span>
+    </div>
+    ${row('Delivery (Trello)',dr,50)}
+    ${row('Setoran harian',ur,30)}
+    ${row('Pemahaman brief',br,10)}
+    ${row('Kehadiran',pr,10)}
+    <div style="font-size:10px;color:var(--t3);margin-top:6px;line-height:1.4">Gabungan data Trello + justifikasi lead. Delivery lebih awal dari target dapat bonus. Komponen yang tidak berlaku (mis. kehadiran WFA) tidak dihitung.</div>
+  </div>`;
+}
+
 function memberCard(m){
   const tier=getTier(m.id),ti=tierInfo(tier);
   const dr=getDeliveryRate(m.id),ur=getUpdateRate(m.id),streak=getStreak(m.id);
@@ -789,6 +921,8 @@ function memberCard(m){
   const velHtml=buildVelocitySection(m.id);
   const briefRatingHtml=buildBriefRatingSection(m.id);
   const notesHtml=buildNotesSection(m.id);
+  const scoreHtml=buildScoreBreakdown(m.id);
+  const dirdaHtml=buildDirdaSection(m.id);
 
   return`<div class="mc" id="mc-${m.id}">
     <div class="mch" onclick="toggle('mc-${m.id}')">
@@ -805,6 +939,8 @@ function memberCard(m){
       ${briefCtx}
       ${msHtml}
       ${velHtml}
+      ${dirdaHtml}
+      ${scoreHtml}
       ${briefRatingHtml}
       ${notesHtml}
       <div class="div"></div>
@@ -947,8 +1083,9 @@ function buildMonthReview(m,month,y){
           } else {
             stTxt=dl?`target ${fmtDate(dl)}`:'belum ada deadline';stCls='color:var(--t3)';
           }
+          const gPfx=ms.group?`<span style="font-size:10px;color:var(--t3)">${shortGroup(ms.group)} · </span>`:'';
           return`<div class="ritem"><span class="rdot ${ms.status==='hit'?'pos':(dl&&dl<today()?'neg':'act')}"></span>
-            <span>${ms.name} <span style="font-family:var(--mono);font-size:10px;${stCls}">— ${stTxt}</span></span></div>`;
+            <span>${gPfx}${ms.name} <span style="font-family:var(--mono);font-size:10px;${stCls}">— ${stTxt}</span></span></div>`;
         }).join('');
         return`<div style="margin-bottom:.625rem">
           <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;margin-bottom:4px">
@@ -1081,7 +1218,7 @@ function renderInpForm(mid){
   const channel=ch(m.lead);
   const projs=S.projects.filter(p=>p.assignee===mid&&(p.active===true||p.active==="true"));
   const projHtml=projs.length?projs.map(p=>{
-    const items=(p.milestones||[]).map((ms,i)=>{
+    const renderInpRow=({ms,i})=>{
       const st=effStatus(ms);
       const rc=st==='hit'?'done':st?'late':'';
       const cc=st==='hit'?'done':st?'late':'';
@@ -1089,8 +1226,13 @@ function renderInpForm(mid){
         <div class="mschk ${cc}" id="imc-${p.id}-${i}">${st==='hit'?'✓':st?'!':''}</div>
         <div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div>
       </div>`;
+    };
+    const items=groupMs(p.milestones||[]).map(({g,items})=>{
+      const gDone=items.filter(x=>effStatus(x.ms)==='hit').length;
+      const gHdr=g?`<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin:8px 0 4px">${shortGroup(g)} <span style="font-family:var(--mono);font-weight:400;color:var(--t3)">${gDone}/${items.length}</span></div>`:'';
+      return gHdr+`<div class="ms-cols">${items.map(renderInpRow).join('')}</div>`;
     }).join('');
-    return`<div style="margin-bottom:.875rem"><div class="ms-proj">${p.name}</div><div class="ms-cols">${items}</div></div>`;
+    return`<div style="margin-bottom:.875rem"><div class="ms-proj">${p.name}</div>${items}</div>`;
   }).join(''):`<div style="font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:.875rem">Belum ada project aktif</div>`;
 
   const mkOpts=(type,opts,cur)=>opts.map(([v,l])=>`<button class="opt${v===cur?' on':''}" id="fi-${type}-${v}" onclick="setFL('${type}','${v}')">${l}</button>`).join('');
@@ -1130,13 +1272,16 @@ function renderInpForm(mid){
       <div class="ftitle">${m.name} <span style="color:var(--t3);font-weight:400;font-size:12px">· ${m.role}</span></div>
       ${summaryHtml}
       <div class="frow"><label class="flbl">Milestone selesai hari ini</label>${projHtml}</div>
-      <div class="frow"><label class="flbl">Hadir di studio</label>
+      ${m.studio_required?`<div class="frow"><label class="flbl">Hadir di studio</label>
         <div class="opts">${mkOpts('att',[['h','Hadir'],['w','WFH'],['n','Tidak hadir']],fAttL)}</div>
       </div>
-      ${absReasonHtml}
-      <div class="frow"><label class="flbl">Setor update ${channel}</label>
+      ${absReasonHtml}`:''}
+      ${m.setoran_manual?`<div class="frow"><label class="flbl">Video/asset approved di-upload hari ini</label>
+        <input type="number" min="0" class="fc" id="inp-upload-f" placeholder="0" value="${existing?.attachment_count||''}" style="max-width:120px">
+        <div style="font-size:11px;color:var(--t3);margin-top:4px">Dirda: jumlah video approved yang masuk Trello hari ini</div>
+      </div>`:`<div class="frow"><label class="flbl">Setor update ${channel}</label>
         <div class="opts">${mkOpts('upd',[['y','Ya'],['n','Tidak']],fUpdL)}</div>
-      </div>
+      </div>`}
       <div class="frow"><label class="flbl">Pemahaman brief</label>
         <div class="opts">${mkOpts('br',[['g','Mandiri'],['m','Wajar'],['l','Sering tanya dasar']],fBrL)}</div>
       </div>
@@ -1188,11 +1333,19 @@ function toggleInpMsNew(pid,idx){
 
 function saveEntryNew(){
   const mid=curInpMember;if(!mid)return;
+  const m=S.members.find(x=>x.id===mid)||{};
   const td=today();
   const note=document.getElementById('inp-note-f')?.value.trim()||'';
   if(!S.entries[mid])S.entries[mid]={};
   const entry={att:fAttL,upd:fUpdL,br:fBrL,note};
   if(fAttL==='n'&&fAbsReason)entry.absent_reason=fAbsReason;
+  // Member dengan setoran manual (Dirda): upload count → attachment_count + upd
+  if(m.setoran_manual){
+    const uc=parseInt(document.getElementById('inp-upload-f')?.value||'0')||0;
+    entry.attachment_count=uc;
+    entry.upd=uc>=2?'2':uc===1?'1':'n';
+    entry.att='w'; // Dirda tidak dinilai kehadiran studio
+  }
   // Preserve field otomatis dari bot jika ada
   const existing=S.entries[mid][td];
   if(existing?.milestones_done)entry.milestones_done=existing.milestones_done;
@@ -1213,7 +1366,6 @@ function saveEntryNew(){
   });
   inpMsChecked={};
   autoCloseCompleted();
-  const m=S.members.find(x=>x.id===mid);
   showToast(`Tersimpan · ${m?.name} · ${td}`);
   renderInput();
 }
@@ -1248,7 +1400,7 @@ function renderProjects(){
     const asgn=S.members.find(m=>m.id===p.assignee);
     const ms_list=p.milestones||[];
     const done=ms_list.filter(ms=>effStatus(ms)==='hit').length;
-    const items=ms_list.map((ms,i)=>{
+    const renderRow=({ms,i})=>{
       const es=effStatus(ms);
       const dv=doneVariant(ms);
       const msrCls=es==='hit'?`done${dv?' '+dv:''}`:es?'late':'';
@@ -1256,6 +1408,12 @@ function renderProjects(){
       const tierCls=es==='hit'?doneTierClass(ms):es?'tb':'tn';
       const lbl=es==='hit'?doneLabel(ms):es?'terlambat':'pending';
       return`<div class="msr ${msrCls}" onclick="toggleProjMs('${p.id}',${i})"><div class="mschk ${chkCls}">${es==='hit'?'✓':''}</div><div style="flex:1;min-width:0"><div class="msn">${ms.name}</div><div class="msd">${(ms.due||ms.deadline)?fmtDate(ms.due||ms.deadline):'no deadline'}</div></div><span class="tier ${tierCls}" style="font-size:10px">${lbl}</span></div>`;
+    };
+    // Kelompokkan per checklist/font (card typework berisi banyak font)
+    const items=groupMs(ms_list).map(({g,items})=>{
+      const gDone=items.filter(x=>effStatus(x.ms)==='hit').length;
+      const gHdr=g?`<div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);margin:10px 0 4px">${shortGroup(g)} <span style="font-family:var(--mono);font-weight:400;color:var(--t3)">${gDone}/${items.length}</span></div>`:'';
+      return gHdr+items.map(renderRow).join('');
     }).join('');
     return`<div class="pcard"><div class="pt">${p.name}</div><div class="pm">${asgn?.name||'?'} · ${done}/${ms_list.length} milestone</div><div class="pcols">${items}</div><button class="sbtn ghost" style="margin-top:.75rem" onclick="closeProj('${p.id}')">Tandai selesai</button></div>`;
   }).join(''):`<div style="font-size:13px;color:var(--t3);padding:.5rem 0 1rem;font-family:var(--mono)">Belum ada project aktif</div>`)+completedHtml;
